@@ -16,7 +16,7 @@
 
 #define Vector(T) Vector_##T
 
-#define VECTOR_INIT { .n = 0, .m = 0, .a = NULL }
+#define VECTOR_INIT(T) (Vector_##T){ .n = 0, .m = 0, .a = NULL }
 #define vector_init(vec) ((vec).n = (vec).m = 0, (vec).a = NULL)
 #define vector_deinit(vec) do {     \
     if ((vec).a) {                  \
