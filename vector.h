@@ -12,7 +12,9 @@
 
 #define int32_next_power_2(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
 
-#define Vector(T) struct { uint32_t n, m; T *a; }
+#define VECTOR_DECL(T) typedef struct Vector_##T { uint32_t n, m; T *a; } Vector_##T
+
+#define Vector(T) Vector_##T
 
 #define VECTOR_INIT { .n = 0, .m = 0, .a = NULL }
 #define vector_init(vec) ((vec).n = (vec).m = 0, (vec).a = NULL)
