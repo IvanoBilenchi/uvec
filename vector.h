@@ -26,12 +26,12 @@
     (vec).n = (vec).m = 0;          \
 } while(0)
 
-#define vector_copy(T, vec, other_vec) do {                     \
-    uint32_t __new_n = (other_vec).n;                           \
-    if ((vec).m < __new_n)                                      \
-        vector_reserve_capacity(T, (vec), __new_n);             \
-    (vec).n = __new_n;                                          \
-    memcpy((vec).a, (other_vec).a, sizeof(T) * __new_n);        \
+#define vector_copy(T, vec, other_vec) do {                             \
+    uint32_t __new_n = (other_vec).n;                                   \
+    if (!__new_n) break;                                                \
+    if ((vec).m < __new_n) vector_reserve_capacity(T, (vec), __new_n);  \
+    (vec).n = __new_n;                                                  \
+    memcpy((vec).a, (other_vec).a, sizeof(T) * __new_n);                \
 } while (0)
 
 #define vector_to_array(vec) ((vec).a)
@@ -45,6 +45,8 @@
         (vec).a = realloc((vec).a, sizeof(T) * (vec).m);        \
     }                                                           \
 } while (0)
+
+#define vector_expand(T, vec, size) vector_reserve_capacity(T, vec, ((vec).n + size))
 
 #define vector_shrink(T, vec) do {                          \
     (vec).m = (vec).n;                                      \
