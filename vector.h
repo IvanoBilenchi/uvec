@@ -38,19 +38,8 @@
         }                                                                                       \
         return VECTOR_INDEX_NOT_FOUND;                                                          \
     }                                                                                           \
-    SCOPE uint32_t vector_index_of_identical_##T(Vector_##T vector, T item) {                   \
-        for (uint32_t i = 0, n = vector.n; i < n; ++i) {                                        \
-            if (vector.a[i] == item) return i;                                                  \
-        }                                                                                       \
-        return VECTOR_INDEX_NOT_FOUND;                                                          \
-    }                                                                                           \
     SCOPE bool vector_push_unique_##T(Vector_##T vector, T item) {                              \
         bool insert = vector_index_of_##T(vector, item) == VECTOR_INDEX_NOT_FOUND;              \
-        if (insert) vector_push(T, vector, item);                                               \
-        return insert;                                                                          \
-    }                                                                                           \
-    SCOPE bool vector_push_unique_identical_##T(Vector_##T vector, T item) {                    \
-        bool insert = vector_index_of_identical_##T(vector, item) == VECTOR_INDEX_NOT_FOUND;    \
         if (insert) vector_push(T, vector, item);                                               \
         return insert;                                                                          \
     }                                                                                           \
@@ -61,6 +50,19 @@
             return true;                                                                        \
         }                                                                                       \
         return false;                                                                           \
+    }
+
+#define __VECTOR_IMPL_IDENTICAL(T, SCOPE)                                                       \
+    SCOPE uint32_t vector_index_of_identical_##T(Vector_##T vector, T item) {                   \
+        for (uint32_t i = 0, n = vector.n; i < n; ++i) {                                        \
+            if (vector.a[i] == item) return i;                                                  \
+        }                                                                                       \
+        return VECTOR_INDEX_NOT_FOUND;                                                          \
+    }                                                                                           \
+    SCOPE bool vector_push_unique_identical_##T(Vector_##T vector, T item) {                    \
+        bool insert = vector_index_of_identical_##T(vector, item) == VECTOR_INDEX_NOT_FOUND;    \
+        if (insert) vector_push(T, vector, item);                                               \
+        return insert;                                                                          \
     }                                                                                           \
     SCOPE bool vector_remove_identical_##T(Vector_##T vector, T item) {                         \
         uint32_t idx = vector_index_of_identical_##T(vector, item);                             \
@@ -77,7 +79,12 @@
     VECTOR_DECL(T);                             \
     __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func)
 
-#define VECTOR_DECL_EQUATABLE_IDENTITY(T) VECTOR_DECL_EQUATABLE(T, __vector_identical)
+#define VECTOR_DECL_EQUATABLE_IDENTITY(T, __equal_func)                                 \
+    VECTOR_DECL(T);                                                                     \
+    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func)    \
+    __VECTOR_IMPL_IDENTICAL(T, static __vector_inline __vector_unused)
+
+#define VECTOR_DECL_IDENTITY(T) VECTOR_DECL_EQUATABLE_IDENTITY(T, __vector_identical)
 
 #define Vector(T) Vector_##T
 
