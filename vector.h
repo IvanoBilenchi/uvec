@@ -63,8 +63,10 @@
     SCOPE void vector_shrink_##T(Vector_##T *vector) {                                              \
         uint32_t new_allocated = vector->count;                                                     \
         __vector_int32_next_power_2(new_allocated);                                                 \
-        vector->allocated = new_allocated;                                                          \
-        vector->storage = realloc(vector->storage, sizeof(T) * new_allocated);                      \
+        if (new_allocated < vector->allocated) {                                                    \
+            vector->allocated = new_allocated;                                                      \
+            vector->storage = realloc(vector->storage, sizeof(T) * new_allocated);                  \
+        }                                                                                           \
     }                                                                                               \
     SCOPE void vector_push_##T(Vector_##T *vector, T item) {                                        \
         uint32_t allocated = vector->allocated;                                                     \
@@ -112,11 +114,6 @@
             return true;                                                                            \
         }                                                                                           \
         return false;                                                                               \
-    }                                                                                               \
-    SCOPE void vector_append_unique_##T(Vector_##T *vector, Vector_##T const *other) {              \
-        vector_foreach(other, T item, {                                                             \
-            vector_push_unique_##T(vector, item);                                                   \
-        });                                                                                         \
     }
 
 #define __VECTOR_IMPL_IDENTICAL(T, SCOPE)                                                           \
@@ -139,11 +136,6 @@
             return true;                                                                            \
         }                                                                                           \
         return false;                                                                               \
-    }                                                                                               \
-    SCOPE void vector_append_unique_identical_##T(Vector_##T *vector, Vector_##T const *other) {    \
-        vector_foreach(other, T item, {                                                             \
-            vector_push_unique_identical_##T(vector, item);                                         \
-        });                                                                                         \
     }
 
 #define VECTOR_DECL(T)                                                                  \
@@ -197,10 +189,10 @@
 #define vector_append(T, vec, vec_to_append) vector_append_array_##T(vec, (vec_to_append)->storage, (vec_to_append)->count)
 #define vector_append_array(T, vec, array, n) vector_append_array_##T(vec, array, n)
 
-#define vector_iterate(vec, item, idx_name, code)                                           \
-    for (unsigned long (idx_name) = 0, __n = vec->count; (idx_name) < __n; ++(idx_name)) {  \
-        item = vector_get((vec), (idx_name));                                               \
-        code;                                                                               \
+#define vector_iterate(vec, item, idx_name, code)                                               \
+    for (unsigned long (idx_name) = 0, __n = (vec)->count; (idx_name) < __n; ++(idx_name)) {    \
+        item = vector_get((vec), (idx_name));                                                   \
+        code;                                                                                   \
     }
 
 #define vector_foreach(vec, item, code) vector_iterate(vec, item, __i, code)
@@ -217,7 +209,18 @@
 #define vector_remove(T, vec, item) vector_remove_##T(vec, item)
 #define vector_remove_identical(T, vec, item) vector_remove_identical_##T(vec, item)
 
-#define vector_append_unique(T, vec, vec_to_append) vector_append_unique_##T(vec, vec_to_append)
-#define vector_append_unique_identical(T, vec, vec_to_append) vector_append_unique_identical_##T(vec, vec_to_append)
+#define vector_append_unique(T, vec, vec_to_append)     \
+    vector_foreach(vec_to_append, T __item, {           \
+        vector_push_unique_##T(vec, __item);            \
+    })
+#define vector_append_unique_identical(T, vec, vec_to_append)   \
+    vector_foreach(vec_to_append, T __item, {                   \
+        vector_push_unique_identical_##T(vec, __item);          \
+    })
+
+#define vector_remove_all_from(T, vec, vec_to_remove)   \
+    vector_foreach(vec_to_remove, T __item, {           \
+        vector_remove_##T(vec, __item);                 \
+    })
 
 #endif /* vector_h */
