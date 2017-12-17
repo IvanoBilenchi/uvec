@@ -126,7 +126,7 @@
         if (vector->count == 0 && other->count == 0) return true;                                   \
         if (equal_func_is_identity)                                                                 \
             return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;         \
-        vector_iterate(vector, T item, idx, {                                                       \
+        vector_iterate(T, vector, item, idx, {                                                      \
             if (!__equal_func(item, other->storage[idx])) return false;                             \
         });                                                                                         \
         return true;                                                                                \
@@ -215,13 +215,13 @@
 #define vector_append(T, vec, vec_to_append) vector_append_array_##T(vec, (vec_to_append)->storage, (vec_to_append)->count)
 #define vector_append_array(T, vec, array, n) vector_append_array_##T(vec, array, n)
 
-#define vector_iterate(vec, item, idx_name, code)                                               \
-    for (unsigned long (idx_name) = 0, __n = (vec)->count; (idx_name) < __n; ++(idx_name)) {    \
-        item = vector_get((vec), (idx_name));                                                   \
+#define vector_iterate(T, vec, item_name, idx_name, code)                                       \
+    for (uint32_t (idx_name) = 0, __n = (vec)->count; (idx_name) != __n; ++(idx_name)) {        \
+        T item_name = vector_get((vec), (idx_name));                                            \
         code;                                                                                   \
     }
 
-#define vector_foreach(vec, item, code) vector_iterate(vec, item, __i, code)
+#define vector_foreach(T, vec, item_name, code) vector_iterate(T, vec, item_name, __i, code)
 
 #define vector_index_of(T, vec, item) vector_index_of_##T(vec, item)
 #define vector_index_of_identical(T, vec, item) vector_index_of_identical_##T(vec, item)
@@ -239,16 +239,16 @@
 #define vector_identical(T, vec_a, vec_b) vector_identical_##T(vec_a, vec_b)
 
 #define vector_append_unique(T, vec, vec_to_append)     \
-    vector_foreach(vec_to_append, T __item, {           \
+    vector_foreach(T, vec_to_append, __item, {          \
         vector_push_unique_##T(vec, __item);            \
     })
 #define vector_append_unique_identical(T, vec, vec_to_append)   \
-    vector_foreach(vec_to_append, T __item, {                   \
+    vector_foreach(T, vec_to_append, __item, {                  \
         vector_push_unique_identical_##T(vec, __item);          \
     })
 
 #define vector_remove_all_from(T, vec, vec_to_remove)   \
-    vector_foreach(vec_to_remove, T __item, {           \
+    vector_foreach(T, vec_to_remove, __item, {          \
         vector_remove_##T(vec, __item);                 \
     })
 
