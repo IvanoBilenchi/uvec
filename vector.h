@@ -99,7 +99,7 @@
         vector->count = 0;                                                                          \
     }
 
-#define __VECTOR_IMPL_EQUATABLE(T, SCOPE, __equal_func)                                             \
+#define __VECTOR_IMPL_EQUATABLE(T, SCOPE, __equal_func, equal_func_is_identity)                     \
     SCOPE uint32_t vector_index_of_##T(Vector_##T *vector, T item) {                                \
         T *storage = vector->storage;                                                               \
         for (uint32_t i = 0, n = vector->count; i < n; ++i) {                                       \
@@ -122,8 +122,10 @@
     }                                                                                               \
     SCOPE bool vector_equals_##T(Vector_##T *vector, Vector_##T *other) {                           \
         if (vector == other) return true;                                                           \
-        if (!(vector && other)) return false;                                                       \
-        if (vector->count != other->count) return false;                                            \
+        if (!vector || !other || vector->count != other->count) return false;                       \
+        if (vector->count == 0 && other->count == 0) return true;                                   \
+        if (equal_func_is_identity)                                                                 \
+            return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;         \
         vector_iterate(vector, T item, idx, {                                                       \
             if (!__equal_func(item, other->storage[idx])) return false;                             \
         });                                                                                         \
@@ -150,22 +152,32 @@
             return true;                                                                            \
         }                                                                                           \
         return false;                                                                               \
+    }                                                                                               \
+    SCOPE bool vector_identical_##T(Vector_##T *vector, Vector_##T *other) {                        \
+        if (vector == other) return true;                                                           \
+        if (!vector || !other || vector->count != other->count) return false;                       \
+        if (vector->count == 0 && other->count == 0) return true;                                   \
+        return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;             \
     }
 
-#define VECTOR_DECL(T)                                                                  \
-    typedef struct Vector_##T { uint32_t count, allocated; T *storage; } Vector_##T;    \
+
+#define VECTOR_DECL(T)                                                                          \
+    typedef struct Vector_##T { uint32_t count, allocated; T *storage; } Vector_##T;            \
     __VECTOR_IMPL(T, static __vector_inline __vector_unused)
 
-#define VECTOR_DECL_EQUATABLE(T, __equal_func)                                          \
-    VECTOR_DECL(T);                                                                     \
-    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func)
+#define VECTOR_DECL_EQUATABLE(T, __equal_func)                                                  \
+    VECTOR_DECL(T);                                                                             \
+    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func, 0)
 
-#define VECTOR_DECL_EQUATABLE_IDENTITY(T, __equal_func)                                 \
-    VECTOR_DECL(T);                                                                     \
-    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func)    \
+#define VECTOR_DECL_EQUATABLE_IDENTITY(T, __equal_func)                                         \
+    VECTOR_DECL(T);                                                                             \
+    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func, 0)         \
     __VECTOR_IMPL_IDENTICAL(T, static __vector_inline __vector_unused)
 
-#define VECTOR_DECL_IDENTITY(T) VECTOR_DECL_EQUATABLE_IDENTITY(T, __vector_identical)
+#define VECTOR_DECL_IDENTITY(T)                                                                 \
+    VECTOR_DECL(T);                                                                             \
+    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __vector_identical, 1)   \
+    __VECTOR_IMPL_IDENTICAL(T, static __vector_inline __vector_unused)
 
 #define Vector(T) Vector_##T
 #define vector_struct(T) struct Vector_##T
@@ -224,6 +236,7 @@
 #define vector_remove_identical(T, vec, item) vector_remove_identical_##T(vec, item)
 
 #define vector_equals(T, vec_a, vec_b) vector_equals_##T(vec_a, vec_b)
+#define vector_identical(T, vec_a, vec_b) vector_identical_##T(vec_a, vec_b)
 
 #define vector_append_unique(T, vec, vec_to_append)     \
     vector_foreach(vec_to_append, T __item, {           \
