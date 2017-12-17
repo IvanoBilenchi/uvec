@@ -114,6 +114,13 @@
             return true;                                                                            \
         }                                                                                           \
         return false;                                                                               \
+    }                                                                                               \
+    SCOPE bool vector_equals_##T(Vector_##T *vector, Vector_##T *other) {                           \
+        if (vector->count != other->count) return false;                                            \
+        vector_iterate(vector, T item, idx, {                                                       \
+            if (!__equal_func(item, other->storage[idx])) return false;                             \
+        });                                                                                         \
+        return true;                                                                                \
     }
 
 #define __VECTOR_IMPL_IDENTICAL(T, SCOPE)                                                           \
@@ -208,6 +215,8 @@
 
 #define vector_remove(T, vec, item) vector_remove_##T(vec, item)
 #define vector_remove_identical(T, vec, item) vector_remove_identical_##T(vec, item)
+
+#define vector_equals(T, vec_a, vec_b) vector_equals_##T(vec_a, vec_b)
 
 #define vector_append_unique(T, vec, vec_to_append)     \
     vector_foreach(vec_to_append, T __item, {           \
