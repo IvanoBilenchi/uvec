@@ -121,6 +121,8 @@
         return false;                                                                               \
     }                                                                                               \
     SCOPE bool vector_equals_##T(Vector_##T *vector, Vector_##T *other) {                           \
+        if (vector == other) return true;                                                           \
+        if (!(vector && other)) return false;                                                       \
         if (vector->count != other->count) return false;                                            \
         vector_iterate(vector, T item, idx, {                                                       \
             if (!__equal_func(item, other->storage[idx])) return false;                             \
