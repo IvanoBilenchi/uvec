@@ -37,7 +37,7 @@
     }                                                                                               \
     SCOPE void vector_free_##T(Vector_##T *vector) {                                                \
         if (!vector) return;                                                                        \
-        if (vector->storage) free(vector->storage);                                                 \
+        if (vector->allocated) free(vector->storage);                                               \
         free(vector);                                                                               \
     }                                                                                               \
     SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, uint32_t capacity) {                 \
@@ -62,10 +62,15 @@
     }                                                                                               \
     SCOPE void vector_shrink_##T(Vector_##T *vector) {                                              \
         uint32_t new_allocated = vector->count;                                                     \
-        __vector_int32_next_power_2(new_allocated);                                                 \
-        if (new_allocated < vector->allocated) {                                                    \
-            vector->allocated = new_allocated;                                                      \
-            vector->storage = realloc(vector->storage, sizeof(T) * new_allocated);                  \
+        if (new_allocated) {                                                                        \
+            __vector_int32_next_power_2(new_allocated);                                             \
+            if (new_allocated < vector->allocated) {                                                \
+                vector->allocated = new_allocated;                                                  \
+                vector->storage = realloc(vector->storage, sizeof(T) * new_allocated);              \
+            }                                                                                       \
+        } else {                                                                                    \
+            free(vector->storage);                                                                  \
+            vector->allocated = 0;                                                                  \
         }                                                                                           \
     }                                                                                               \
     SCOPE void vector_push_##T(Vector_##T *vector, T item) {                                        \
