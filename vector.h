@@ -12,6 +12,9 @@
 
 #define VECTOR_INDEX_NOT_FOUND UINT32_MAX
 
+#define MACRO_CONCAT(a, b) __MACRO_CONCAT(a, b)
+#define __MACRO_CONCAT(a, b) a##b
+
 #ifndef __vector_inline
     #ifdef _MSC_VER
         #define __vector_inline __inline
@@ -160,7 +163,6 @@
         return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;             \
     }
 
-
 #define VECTOR_DECL(T)                                                                          \
     typedef struct Vector_##T { uint32_t count, allocated; T *storage; } Vector_##T;            \
     __VECTOR_IMPL(T, static __vector_inline __vector_unused)
@@ -179,14 +181,14 @@
     __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __vector_identical, 1)   \
     __VECTOR_IMPL_IDENTICAL(T, static __vector_inline __vector_unused)
 
-#define Vector(T) Vector_##T
-#define vector_struct(T) struct Vector_##T
+#define Vector(T) MACRO_CONCAT(Vector_, T)
+#define vector_struct(T) struct MACRO_CONCAT(Vector_, T)
 
-#define vector_alloc(T) vector_alloc_##T()
-#define vector_free(T, vec) vector_free_##T(vec)
-#define vector_copy(T, vec) vector_copy_##T(vec)
+#define vector_alloc(T) MACRO_CONCAT(vector_alloc_, T)()
+#define vector_free(T, vec) MACRO_CONCAT(vector_free_, T)(vec)
+#define vector_copy(T, vec) MACRO_CONCAT(vector_copy_, T)(vec)
 
-#define VECTOR_INIT(T) (Vector_##T){ .count = 0, .allocated = 0, .storage = NULL }
+#define VECTOR_INIT(T) (MACRO_CONCAT(Vector_, T)){ .count = 0, .allocated = 0, .storage = NULL }
 #define vector_deinit(vec) do {         \
     if ((vec).storage) {                \
         free((vec).storage);            \
@@ -195,9 +197,9 @@
     (vec).count = (vec).allocated = 0;  \
 } while(0)
 
-#define vector_reserve_capacity(T, vec, size) vector_reserve_capacity_##T(vec, size)
-#define vector_expand(T, vec, size) vector_reserve_capacity_##T(vec, (vec->count + size))
-#define vector_shrink(T, vec) vector_shrink_##T(vec)
+#define vector_reserve_capacity(T, vec, size) MACRO_CONCAT(vector_reserve_capacity_, T)(vec, size)
+#define vector_expand(T, vec, size) MACRO_CONCAT(vector_reserve_capacity_, T)(vec, (vec->count + size))
+#define vector_shrink(T, vec) MACRO_CONCAT(vector_shrink_, T)(vec)
 
 #define vector_get(vec, idx) ((vec)->storage[(idx)])
 #define vector_set(vec, idx, item) ((vec)->storage[(idx)] = (item))
@@ -206,14 +208,14 @@
 #define vector_is_empty(vec) (!((vec) && (vec)->count))
 #define vector_count(vec) ((vec) ? (vec)->count : 0)
 
-#define vector_push(T, vec, item) vector_push_##T(vec, item)
-#define vector_pop(T, vec) vector_pop_##T(vec)
+#define vector_push(T, vec, item) MACRO_CONCAT(vector_push_, T)(vec, item)
+#define vector_pop(T, vec) MACRO_CONCAT(vector_pop_, T)(vec)
 
-#define vector_remove_at(T, vec, idx) vector_remove_at_##T(vec, idx)
-#define vector_remove_all(T, vec) vector_remove_all_##T(vec)
+#define vector_remove_at(T, vec, idx) MACRO_CONCAT(vector_remove_at_, T)(vec, idx)
+#define vector_remove_all(T, vec) MACRO_CONCAT(vector_remove_all_, T)(vec)
 
-#define vector_append(T, vec, vec_to_append) vector_append_array_##T(vec, (vec_to_append)->storage, (vec_to_append)->count)
-#define vector_append_array(T, vec, array, n) vector_append_array_##T(vec, array, n)
+#define vector_append(T, vec, vec_to_append) MACRO_CONCAT(vector_append_array_, T)(vec, (vec_to_append)->storage, (vec_to_append)->count)
+#define vector_append_array(T, vec, array, n) MACRO_CONCAT(vector_append_array_, T)(vec, array, n)
 
 #define vector_iterate(T, vec, item_name, idx_name, code)                                       \
     if (vector_count(vec)) {                                                                    \
@@ -225,33 +227,34 @@
 
 #define vector_foreach(T, vec, item_name, code) vector_iterate(T, vec, item_name, __i, code)
 
-#define vector_index_of(T, vec, item) vector_index_of_##T(vec, item)
-#define vector_index_of_identical(T, vec, item) vector_index_of_identical_##T(vec, item)
+#define vector_index_of(T, vec, item) MACRO_CONCAT(vector_index_of_, T)(vec, item)
+#define vector_index_of_identical(T, vec, item) MACRO_CONCAT(vector_index_of_identical_, T)(vec, item)
 
-#define vector_contains(T, vec, item) (vector_index_of_##T(vec, item) != VECTOR_INDEX_NOT_FOUND)
-#define vector_contains_identical(T, vec, item) (vector_index_of_identical_##T(vec, item) != VECTOR_INDEX_NOT_FOUND)
+#define vector_contains(T, vec, item) (MACRO_CONCAT(vector_index_of_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
+#define vector_contains_identical(T, vec, item) (MACRO_CONCAT(vector_index_of_identical_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
 
-#define vector_push_unique(T, vec, item) vector_push_unique_##T(vec, item)
-#define vector_push_unique_identical(T, vec, item) vector_push_unique_identical_##T(vec, item)
+#define vector_push_unique(T, vec, item) MACRO_CONCAT(vector_push_unique_, T)(vec, item)
+#define vector_push_unique_identical(T, vec, item) MACRO_CONCAT(vector_push_unique_identical_, T)(vec, item)
 
-#define vector_remove(T, vec, item) vector_remove_##T(vec, item)
-#define vector_remove_identical(T, vec, item) vector_remove_identical_##T(vec, item)
+#define vector_remove(T, vec, item) MACRO_CONCAT(vector_remove_, T)(vec, item)
+#define vector_remove_identical(T, vec, item) MACRO_CONCAT(vector_remove_identical_, T)(vec, item)
 
-#define vector_equals(T, vec_a, vec_b) vector_equals_##T(vec_a, vec_b)
-#define vector_identical(T, vec_a, vec_b) vector_identical_##T(vec_a, vec_b)
+#define vector_equals(T, vec_a, vec_b) MACRO_CONCAT(vector_equals_, T)(vec_a, vec_b)
+#define vector_identical(T, vec_a, vec_b) MACRO_CONCAT(vector_identical_, T)(vec_a, vec_b)
 
-#define vector_append_unique(T, vec, vec_to_append)     \
-    vector_foreach(T, vec_to_append, __item, {          \
-        vector_push_unique_##T(vec, __item);            \
+#define vector_append_unique(T, vec, vec_to_append)         \
+    vector_foreach(T, vec_to_append, __item, {              \
+        MACRO_CONCAT(vector_push_unique_, T)(vec, __item);  \
     })
-#define vector_append_unique_identical(T, vec, vec_to_append)   \
-    vector_foreach(T, vec_to_append, __item, {                  \
-        vector_push_unique_identical_##T(vec, __item);          \
+
+#define vector_append_unique_identical(T, vec, vec_to_append)           \
+    vector_foreach(T, vec_to_append, __item, {                          \
+        MACRO_CONCAT(vector_push_unique_identical_, T)(vec, __item);    \
     })
 
 #define vector_remove_all_from(T, vec, vec_to_remove)   \
     vector_foreach(T, vec_to_remove, __item, {          \
-        vector_remove_##T(vec, __item);                 \
+        MACRO_CONCAT(vector_remove_, T)(vec, __item);   \
     })
 
 #endif /* vector_h */
