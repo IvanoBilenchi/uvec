@@ -217,15 +217,15 @@
 #define vector_append(T, vec, vec_to_append) MACRO_CONCAT(vector_append_array_, T)(vec, (vec_to_append)->storage, (vec_to_append)->count)
 #define vector_append_array(T, vec, array, n) MACRO_CONCAT(vector_append_array_, T)(vec, array, n)
 
-#define vector_iterate(T, vec, item_name, idx_name, code)                                       \
-    if (vector_count(vec)) {                                                                    \
-        for (uint32_t (idx_name) = 0, __n = (vec)->count; (idx_name) != __n; ++(idx_name)) {    \
-            T item_name = vector_get((vec), (idx_name));                                        \
-            code;                                                                               \
-        }                                                                                       \
+#define vector_iterate(T, vec, item_name, idx_name, code)                                                           \
+    if (vector_count(vec)) {                                                                                        \
+        for (uint32_t (idx_name) = 0, __n_##idx_name = (vec)->count; (idx_name) != __n_##idx_name; ++(idx_name)) {  \
+            T item_name = vector_get((vec), (idx_name));                                                            \
+            code;                                                                                                   \
+        }                                                                                                           \
     }
 
-#define vector_foreach(T, vec, item_name, code) vector_iterate(T, vec, item_name, __i, code)
+#define vector_foreach(T, vec, item_name, code) vector_iterate(T, vec, item_name, __i_##item_name, code)
 
 #define vector_index_of(T, vec, item) MACRO_CONCAT(vector_index_of_, T)(vec, item)
 #define vector_index_of_identical(T, vec, item) MACRO_CONCAT(vector_index_of_identical_, T)(vec, item)
