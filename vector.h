@@ -133,6 +133,16 @@
             if (!__equal_func(item, other->storage[idx])) return false;                             \
         });                                                                                         \
         return true;                                                                                \
+    }                                                                                               \
+    SCOPE bool vector_contains_all_##T(Vector_##T *vector, Vector_##T *other) {                     \
+        if (vector == other) return true;                                                           \
+        if (!other || !other->count) return true;                                                   \
+        if (!vector || vector->count < other->count) return false;                                  \
+        T *storage = other->storage;                                                                \
+        for (uint32_t i = 0, n = other->count; i < n; ++i) {                                        \
+            if (!vector_contains(T, vector, storage[i])) return false;                              \
+        }                                                                                           \
+        return true;                                                                                \
     }
 
 #define __VECTOR_IMPL_IDENTICAL(T, SCOPE)                                                           \
@@ -161,6 +171,16 @@
         if (!vector || !other || vector->count != other->count) return false;                       \
         if (vector->count == 0 && other->count == 0) return true;                                   \
         return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;             \
+    }                                                                                               \
+    SCOPE bool vector_contains_all_identical_##T(Vector_##T *vector, Vector_##T *other) {           \
+        if (vector == other) return true;                                                           \
+        if (!other || !other->count) return true;                                                   \
+        if (!vector || vector->count < other->count) return false;                                  \
+        T *storage = other->storage;                                                                \
+        for (uint32_t i = 0, n = other->count; i < n; ++i) {                                        \
+            if (!vector_contains_identical(T, vector, storage[i])) return false;                    \
+        }                                                                                           \
+        return true;                                                                                \
     }
 
 #define VECTOR_DECL(T)                                                                          \
@@ -232,6 +252,9 @@
 
 #define vector_contains(T, vec, item) (MACRO_CONCAT(vector_index_of_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
 #define vector_contains_identical(T, vec, item) (MACRO_CONCAT(vector_index_of_identical_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
+
+#define vector_contains_all(T, vec, other_vec) MACRO_CONCAT(vector_contains_all_, T)(vec, other_vec)
+#define vector_contains_all_identical(T, vec, other_vec) MACRO_CONCAT(vector_contains_all_identical_, T)(vec, other_vec)
 
 #define vector_push_unique(T, vec, item) MACRO_CONCAT(vector_push_unique_, T)(vec, item)
 #define vector_push_unique_identical(T, vec, item) MACRO_CONCAT(vector_push_unique_identical_, T)(vec, item)
