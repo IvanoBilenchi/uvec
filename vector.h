@@ -103,9 +103,8 @@
 
 #define __VECTOR_IMPL_EQUATABLE(T, SCOPE, __equal_func, equal_func_is_identity)                     \
     SCOPE uint32_t vector_index_of_##T(Vector_##T *vector, T item) {                                \
-        T *storage = vector->storage;                                                               \
-        for (uint32_t i = 0, n = vector->count; i < n; ++i) {                                       \
-            if (__equal_func(storage[i], item)) return i;                                           \
+        for (uint32_t idx = 0; idx < vector->count; ++idx) {                                        \
+            if (__equal_func(vector->storage[idx], item)) return idx;                               \
         }                                                                                           \
         return VECTOR_INDEX_NOT_FOUND;                                                              \
     }                                                                                               \
@@ -124,31 +123,29 @@
     }                                                                                               \
     SCOPE bool vector_equals_##T(Vector_##T *vector, Vector_##T *other) {                           \
         if (vector == other) return true;                                                           \
-        if (!vector || !other || vector->count != other->count) return false;                       \
-        if (vector->count == 0 && other->count == 0) return true;                                   \
+        if (vector->count != other->count) return false;                                            \
+        if (!vector->count) return true;                                                            \
         if (equal_func_is_identity)                                                                 \
             return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;         \
-        vector_iterate(T, vector, item, idx, {                                                      \
-            if (!__equal_func(item, other->storage[idx])) return false;                             \
-        });                                                                                         \
+        for (uint32_t idx = 0; idx < vector->count; ++idx) {                                        \
+            if (!__equal_func(vector->storage[idx], other->storage[idx]))                           \
+                return false;                                                                       \
+        }                                                                                           \
         return true;                                                                                \
     }                                                                                               \
     SCOPE bool vector_contains_all_##T(Vector_##T *vector, Vector_##T *other) {                     \
         if (vector == other) return true;                                                           \
-        if (!other || !other->count) return true;                                                   \
-        if (!vector || vector->count < other->count) return false;                                  \
-        T *storage = other->storage;                                                                \
-        for (uint32_t i = 0, n = other->count; i < n; ++i) {                                        \
-            if (!vector_contains(T, vector, storage[i])) return false;                              \
+        for (uint32_t idx = 0; idx < other->count; ++idx) {                                         \
+            if (vector_index_of_##T(vector, other->storage[idx]) == VECTOR_INDEX_NOT_FOUND)         \
+                return false;                                                                       \
         }                                                                                           \
         return true;                                                                                \
     }
 
 #define __VECTOR_IMPL_IDENTICAL(T, SCOPE)                                                           \
     SCOPE uint32_t vector_index_of_identical_##T(Vector_##T *vector, T item) {                      \
-        T *storage = vector->storage;                                                               \
-        for (uint32_t i = 0, n = vector->count; i < n; ++i) {                                       \
-            if (storage[i] == item) return i;                                                       \
+        for (uint32_t idx = 0; idx < vector->count; ++idx) {                                        \
+            if (vector->storage[idx] == item) return idx;                                           \
         }                                                                                           \
         return VECTOR_INDEX_NOT_FOUND;                                                              \
     }                                                                                               \
@@ -167,17 +164,16 @@
     }                                                                                               \
     SCOPE bool vector_identical_##T(Vector_##T *vector, Vector_##T *other) {                        \
         if (vector == other) return true;                                                           \
-        if (!vector || !other || vector->count != other->count) return false;                       \
-        if (vector->count == 0 && other->count == 0) return true;                                   \
+        if (vector->count != other->count) return false;                                            \
+        if (!vector->count) return true;                                                            \
         return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;             \
     }                                                                                               \
     SCOPE bool vector_contains_all_identical_##T(Vector_##T *vector, Vector_##T *other) {           \
         if (vector == other) return true;                                                           \
-        if (!other || !other->count) return true;                                                   \
-        if (!vector || vector->count < other->count) return false;                                  \
-        T *storage = other->storage;                                                                \
-        for (uint32_t i = 0, n = other->count; i < n; ++i) {                                        \
-            if (!vector_contains_identical(T, vector, storage[i])) return false;                    \
+        for (uint32_t idx = 0; idx < other->count; ++idx) {                                         \
+            T item = other->storage[idx];                                                           \
+            if (vector_index_of_identical_##T(vector, item) == VECTOR_INDEX_NOT_FOUND)              \
+                return false;                                                                       \
         }                                                                                           \
         return true;                                                                                \
     }
@@ -249,7 +245,7 @@
 #define vector_iterate(T, vec, item_name, idx_name, code)                               \
     if (vector_count(vec)) {                                                            \
         uint32_t __n_##idx_name = (vec)->count;                                         \
-        for (uint32_t (idx_name) = 0; (idx_name) != __n_##idx_name; ++(idx_name)) {     \
+        for (uint32_t idx_name = 0; idx_name != __n_##idx_name; ++idx_name) {           \
             T item_name = vector_get((vec), (idx_name));                                \
             code;                                                                       \
         }                                                                               \
