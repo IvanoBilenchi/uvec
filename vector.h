@@ -92,7 +92,7 @@
     SCOPE void vector_remove_at_##T(Vector_##T *vector, uint32_t idx) {                             \
         uint32_t count = vector->count;                                                             \
         if (idx < count - 1) {                                                                      \
-            size_t block_size = (count - idx) * sizeof(T);                                          \
+            size_t block_size = (count - idx - 1) * sizeof(T);                                      \
             memmove(&(vector->storage[idx]), &(vector->storage[idx + 1]), block_size);              \
         }                                                                                           \
         vector->count--;                                                                            \
