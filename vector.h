@@ -142,42 +142,6 @@
         return true;                                                                                \
     }
 
-#define __VECTOR_IMPL_IDENTICAL(T, SCOPE)                                                           \
-    SCOPE uint32_t vector_index_of_identical_##T(Vector_##T *vector, T item) {                      \
-        for (uint32_t idx = 0; idx < vector->count; ++idx) {                                        \
-            if (vector->storage[idx] == item) return idx;                                           \
-        }                                                                                           \
-        return VECTOR_INDEX_NOT_FOUND;                                                              \
-    }                                                                                               \
-    SCOPE bool vector_push_unique_identical_##T(Vector_##T *vector, T item) {                       \
-        bool insert = vector_index_of_identical_##T(vector, item) == VECTOR_INDEX_NOT_FOUND;        \
-        if (insert) vector_push_##T(vector, item);                                                  \
-        return insert;                                                                              \
-    }                                                                                               \
-    SCOPE bool vector_remove_identical_##T(Vector_##T *vector, T item) {                            \
-        uint32_t idx = vector_index_of_identical_##T(vector, item);                                 \
-        if (idx != VECTOR_INDEX_NOT_FOUND) {                                                        \
-            vector_remove_at_##T(vector, idx);                                                      \
-            return true;                                                                            \
-        }                                                                                           \
-        return false;                                                                               \
-    }                                                                                               \
-    SCOPE bool vector_identical_##T(Vector_##T *vector, Vector_##T *other) {                        \
-        if (vector == other) return true;                                                           \
-        if (vector->count != other->count) return false;                                            \
-        if (!vector->count) return true;                                                            \
-        return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;             \
-    }                                                                                               \
-    SCOPE bool vector_contains_all_identical_##T(Vector_##T *vector, Vector_##T *other) {           \
-        if (vector == other) return true;                                                           \
-        for (uint32_t idx = 0; idx < other->count; ++idx) {                                         \
-            T item = other->storage[idx];                                                           \
-            if (vector_index_of_identical_##T(vector, item) == VECTOR_INDEX_NOT_FOUND)              \
-                return false;                                                                       \
-        }                                                                                           \
-        return true;                                                                                \
-    }
-
 #define VECTOR_DECL(T)                                                                          \
     typedef struct Vector_##T { uint32_t count, allocated; T *storage; } Vector_##T;            \
     __VECTOR_IMPL(T, static __vector_inline __vector_unused)
@@ -186,15 +150,9 @@
     VECTOR_DECL(T);                                                                             \
     __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func, 0)
 
-#define VECTOR_DECL_EQUATABLE_IDENTITY(T, __equal_func)                                         \
+#define VECTOR_DECL_IDENTIFIABLE(T)                                                             \
     VECTOR_DECL(T);                                                                             \
-    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func, 0)         \
-    __VECTOR_IMPL_IDENTICAL(T, static __vector_inline __vector_unused)
-
-#define VECTOR_DECL_IDENTITY(T)                                                                 \
-    VECTOR_DECL(T);                                                                             \
-    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __vector_identical, 1)   \
-    __VECTOR_IMPL_IDENTICAL(T, static __vector_inline __vector_unused)
+    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __vector_identical, 1)
 
 #define Vector(T) MACRO_CONCAT(Vector_, T)
 #define vector_struct(T) struct MACRO_CONCAT(Vector_, T)
@@ -254,29 +212,14 @@
 #define vector_foreach(T, vec, item_name, code) vector_iterate(T, vec, item_name, __i_##item_name, code)
 
 #define vector_index_of(T, vec, item) MACRO_CONCAT(vector_index_of_, T)(vec, item)
-#define vector_index_of_identical(T, vec, item) MACRO_CONCAT(vector_index_of_identical_, T)(vec, item)
-
 #define vector_contains(T, vec, item) (MACRO_CONCAT(vector_index_of_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
-#define vector_contains_identical(T, vec, item) \
-    (MACRO_CONCAT(vector_index_of_identical_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
-
 #define vector_contains_all(T, vec, other_vec) MACRO_CONCAT(vector_contains_all_, T)(vec, other_vec)
-#define vector_contains_all_identical(T, vec, other_vec) \
-    MACRO_CONCAT(vector_contains_all_identical_, T)(vec, other_vec)
+#define vector_remove(T, vec, item) MACRO_CONCAT(vector_remove_, T)(vec, item)
+#define vector_equals(T, vec_a, vec_b) MACRO_CONCAT(vector_equals_, T)(vec_a, vec_b)
 
 #define vector_push_unique(T, vec, item) MACRO_CONCAT(vector_push_unique_, T)(vec, item)
 #define vector_push_unique_lazy(T, vec, item) \
-    do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
-
-#define vector_push_unique_identical(T, vec, item) MACRO_CONCAT(vector_push_unique_identical_, T)(vec, item)
-#define vector_push_unique_identical_lazy(T, vec, item) \
-    do { vector_ensure(T, vec); vector_push_unique_identical(T, vec, item); } while(0)
-
-#define vector_remove(T, vec, item) MACRO_CONCAT(vector_remove_, T)(vec, item)
-#define vector_remove_identical(T, vec, item) MACRO_CONCAT(vector_remove_identical_, T)(vec, item)
-
-#define vector_equals(T, vec_a, vec_b) MACRO_CONCAT(vector_equals_, T)(vec_a, vec_b)
-#define vector_identical(T, vec_a, vec_b) MACRO_CONCAT(vector_identical_, T)(vec_a, vec_b)
+do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
 
 #define vector_append_unique(T, vec, vec_to_append)         \
     vector_foreach(T, vec_to_append, __item, {              \
@@ -285,14 +228,6 @@
 
 #define vector_append_unique_lazy(T, vec, vec_to_append) \
     do { vector_ensure(T, vec); vector_append_unique(T, vec, vec_to_append); } while(0)
-
-#define vector_append_unique_identical(T, vec, vec_to_append)           \
-    vector_foreach(T, vec_to_append, __item, {                          \
-        MACRO_CONCAT(vector_push_unique_identical_, T)(vec, __item);    \
-    })
-
-#define vector_append_unique_identical_lazy(T, vec, vec_to_append) \
-    do { vector_ensure(T, vec); vector_append_unique_identical(T, vec, vec_to_append); } while(0)
 
 #define vector_remove_all_from(T, vec, vec_to_remove)   \
     vector_foreach(T, vec_to_remove, __item, {          \
