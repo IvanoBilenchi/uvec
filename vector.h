@@ -140,6 +140,14 @@
                 return false;                                                                       \
         }                                                                                           \
         return true;                                                                                \
+    }                                                                                               \
+    SCOPE bool vector_contains_any_##T(Vector_##T *vector, Vector_##T *other) {                     \
+        if (vector == other) return true;                                                           \
+        for (uint32_t idx = 0; idx < other->count; ++idx) {                                         \
+            if (vector_index_of_##T(vector, other->storage[idx]) != VECTOR_INDEX_NOT_FOUND)         \
+                return true;                                                                        \
+        }                                                                                           \
+        return false;                                                                               \
     }
 
 #define VECTOR_DECL(T)                                                                          \
@@ -214,6 +222,7 @@
 #define vector_index_of(T, vec, item) MACRO_CONCAT(vector_index_of_, T)(vec, item)
 #define vector_contains(T, vec, item) (MACRO_CONCAT(vector_index_of_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
 #define vector_contains_all(T, vec, other_vec) MACRO_CONCAT(vector_contains_all_, T)(vec, other_vec)
+#define vector_contains_any(T, vec, other_vec) MACRO_CONCAT(vector_contains_any_, T)(vec, other_vec)
 #define vector_remove(T, vec, item) MACRO_CONCAT(vector_remove_, T)(vec, item)
 #define vector_equals(T, vec_a, vec_b) MACRO_CONCAT(vector_equals_, T)(vec_a, vec_b)
 
