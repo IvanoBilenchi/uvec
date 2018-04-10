@@ -217,7 +217,17 @@
         }                                                                               \
     }
 
+#define vector_iterate_reverse(T, vec, item_name, idx_name, code)                       \
+    if (vector_count(vec)) {                                                            \
+        uint32_t __n_##idx_name = (vec)->count;                                         \
+        for (uint32_t idx_name = __n_##idx_name; idx_name-- != 0;) {                    \
+            T item_name = vector_get((vec), (idx_name));                                \
+            code;                                                                       \
+        }                                                                               \
+    }
+
 #define vector_foreach(T, vec, item_name, code) vector_iterate(T, vec, item_name, __i_##item_name, code)
+#define vector_foreach_reverse(T, vec, item_name, code) vector_iterate_reverse(T, vec, item_name, __i_##item_name, code)
 
 #define vector_index_of(T, vec, item) MACRO_CONCAT(vector_index_of_, T)(vec, item)
 #define vector_contains(T, vec, item) (MACRO_CONCAT(vector_index_of_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
