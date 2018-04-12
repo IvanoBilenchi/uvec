@@ -253,4 +253,26 @@ do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
         MACRO_CONCAT(vector_remove_, T)(vec, __item);   \
     })
 
+#define vector_first_index_where(T, vec, item_name, idx_var, bool_exp) do {     \
+    idx_var = VECTOR_INDEX_NOT_FOUND;                                           \
+    vector_iterate(T, vec, item_name, __i_##item_name, {                        \
+        if ((bool_exp)) {                                                       \
+            idx_var = __i_##item_name;                                          \
+            break;                                                              \
+        }                                                                       \
+    });                                                                         \
+} while(0)
+
+#define vector_remove_first_where(T, vec, item_name, bool_exp) \
+    vector_remove_and_free_first_where(T, vec, item_name, bool_exp, (void))
+
+#define vector_remove_and_free_first_where(T, vec, item_name, bool_exp, free_func)  \
+    vector_iterate(T, vec, item_name, __i_##item_name, {                            \
+        if ((bool_exp)) {                                                           \
+            vector_remove_at(T, vec, __i_##item_name);                              \
+            free_func(item_name);                                                   \
+            break;                                                                  \
+        }                                                                           \
+    })
+
 #endif /* vector_h */
