@@ -238,7 +238,7 @@
 
 #define vector_push_unique(T, vec, item) MACRO_CONCAT(vector_push_unique_, T)(vec, item)
 #define vector_push_unique_lazy(T, vec, item) \
-do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
+    do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
 
 #define vector_append_unique(T, vec, vec_to_append)         \
     vector_foreach(T, vec_to_append, __item, {              \
@@ -253,6 +253,39 @@ do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
         MACRO_CONCAT(vector_remove_, T)(vec, __item);   \
     })
 
+#define vector_deep_copy(T, dest, source, copy_func) do {           \
+    if (source) {                                                   \
+        dest = vector_alloc(T);                                     \
+        vector_reserve_capacity(T, dest, source->count);            \
+        vector_foreach(T, source, __##copy_func##_item, {           \
+            vector_push(T, dest, copy_func(__##copy_func##_item));  \
+        });                                                         \
+    } else {                                                        \
+        dest = NULL;                                                \
+    }                                                               \
+} while(0)
+
+#define vector_deep_free(T, vec, free_func) do {                                    \
+    vector_foreach(T, vec, __##free_func##_item, free_func(__##free_func##_item));  \
+    vector_free(T, vec);                                                            \
+} while(0)
+
+#define vector_deep_append(T, dest, source, copy_func) do {         \
+    uint32_t __##copy_func##_count = vector_count(source);          \
+    if (__##copy_func##_count) {                                    \
+        vector_ensure(T, dest);                                     \
+        vector_expand(T, dest, __##copy_func##_count);              \
+        vector_foreach(T, source, __##copy_func##_item, {           \
+            vector_push(T, dest, copy_func(__##copy_func##_item));  \
+        });                                                         \
+    }                                                               \
+} while(0)
+
+#define vector_deep_remove_all(T, vec, free_func) do {                              \
+    vector_foreach(T, vec, __##free_func##_item, free_func(__##free_func##_item));  \
+    vector_remove_all(UniversalRole, vec);                                          \
+} while(0)
+
 #define vector_first_index_where(T, vec, item_name, idx_var, bool_exp) do {     \
     idx_var = VECTOR_INDEX_NOT_FOUND;                                           \
     vector_iterate(T, vec, item_name, __i_##item_name, {                        \
@@ -261,6 +294,16 @@ do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
             break;                                                              \
         }                                                                       \
     });                                                                         \
+} while(0)
+
+#define vector_contains_where(T, vec, item_name, out_var, bool_exp) do {    \
+    out_var = false;                                                        \
+    vector_iterate(T, vec, item_name, __i_##item_name, {                    \
+        if ((bool_exp)) {                                                   \
+            out_var = true;                                                 \
+            break;                                                          \
+        }                                                                   \
+    });                                                                     \
 } while(0)
 
 #define vector_remove_first_where(T, vec, item_name, bool_exp) \
@@ -273,6 +316,17 @@ do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
             free_func(item_name);                                                   \
             break;                                                                  \
         }                                                                           \
+    })
+
+#define vector_remove_where(T, vec, item_name, bool_exp) \
+    vector_remove_and_free_where(T, vec, item_name, bool_exp, (void))
+
+#define vector_remove_and_free_where(T, vec, item_name, bool_exp, free_func)    \
+    vector_iterate_reverse(T, vec, item_name, __i_##item_name, {                \
+        if ((bool_exp)) {                                                       \
+            vector_remove_at(T, vec, __i_##item_name);                          \
+            free_func(item_name);                                               \
+        }                                                                       \
     })
 
 #endif /* vector_h */
