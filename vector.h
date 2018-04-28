@@ -286,47 +286,47 @@
     vector_remove_all(UniversalRole, vec);                                          \
 } while(0)
 
-#define vector_first_index_where(T, vec, item_name, idx_var, bool_exp) do {     \
-    idx_var = VECTOR_INDEX_NOT_FOUND;                                           \
-    vector_iterate(T, vec, item_name, __i_##item_name, {                        \
-        if ((bool_exp)) {                                                       \
-            idx_var = __i_##item_name;                                          \
-            break;                                                              \
-        }                                                                       \
-    });                                                                         \
+#define vector_first_index_where(T, vec, idx_var, bool_exp) do {    \
+    idx_var = VECTOR_INDEX_NOT_FOUND;                               \
+    vector_iterate(T, vec, _vec_item, __i_##idx_var, {              \
+        if ((bool_exp)) {                                           \
+            idx_var = __i_##idx_var;                                \
+            break;                                                  \
+        }                                                           \
+    });                                                             \
 } while(0)
 
-#define vector_contains_where(T, vec, item_name, out_var, bool_exp) do {    \
-    out_var = false;                                                        \
-    vector_iterate(T, vec, item_name, __i_##item_name, {                    \
+#define vector_contains_where(T, vec, out_var, bool_exp) do {   \
+    out_var = false;                                            \
+    vector_foreach(T, vec, _vec_item, {                         \
+        if ((bool_exp)) {                                       \
+            out_var = true;                                     \
+            break;                                              \
+        }                                                       \
+    });                                                         \
+} while(0)
+
+#define vector_remove_first_where(T, vec, bool_exp) \
+    vector_remove_and_free_first_where(T, vec, bool_exp, (void))
+
+#define vector_remove_and_free_first_where(T, vec, bool_exp, free_func)     \
+    vector_iterate(T, vec, _vec_item, __i_remove, {                         \
         if ((bool_exp)) {                                                   \
-            out_var = true;                                                 \
+            vector_remove_at(T, vec, __i_remove);                           \
+            free_func(_vec_item);                                           \
             break;                                                          \
         }                                                                   \
-    });                                                                     \
-} while(0)
-
-#define vector_remove_first_where(T, vec, item_name, bool_exp) \
-    vector_remove_and_free_first_where(T, vec, item_name, bool_exp, (void))
-
-#define vector_remove_and_free_first_where(T, vec, item_name, bool_exp, free_func)  \
-    vector_iterate(T, vec, item_name, __i_##item_name, {                            \
-        if ((bool_exp)) {                                                           \
-            vector_remove_at(T, vec, __i_##item_name);                              \
-            free_func(item_name);                                                   \
-            break;                                                                  \
-        }                                                                           \
     })
 
-#define vector_remove_where(T, vec, item_name, bool_exp) \
-    vector_remove_and_free_where(T, vec, item_name, bool_exp, (void))
+#define vector_remove_where(T, vec, bool_exp) \
+    vector_remove_and_free_where(T, vec, bool_exp, (void))
 
-#define vector_remove_and_free_where(T, vec, item_name, bool_exp, free_func)    \
-    vector_iterate_reverse(T, vec, item_name, __i_##item_name, {                \
-        if ((bool_exp)) {                                                       \
-            vector_remove_at(T, vec, __i_##item_name);                          \
-            free_func(item_name);                                               \
-        }                                                                       \
+#define vector_remove_and_free_where(T, vec, bool_exp, free_func)   \
+    vector_iterate_reverse(T, vec, _vec_item, __i_remove, {         \
+        if ((bool_exp)) {                                           \
+            vector_remove_at(T, vec, __i_remove);                   \
+            free_func(item_name);                                   \
+        }                                                           \
     })
 
 #endif /* vector_h */
