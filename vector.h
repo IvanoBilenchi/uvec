@@ -103,8 +103,8 @@
 
 #define __VECTOR_IMPL_EQUATABLE(T, SCOPE, __equal_func, equal_func_is_identity)                     \
     SCOPE uint32_t vector_index_of_##T(Vector_##T *vector, T item) {                                \
-        for (uint32_t idx = 0; idx < vector->count; ++idx) {                                        \
-            if (__equal_func(vector->storage[idx], item)) return idx;                               \
+        for (uint32_t i = 0; i < vector->count; ++i) {                                              \
+            if (__equal_func(vector->storage[i], item)) return i;                                   \
         }                                                                                           \
         return VECTOR_INDEX_NOT_FOUND;                                                              \
     }                                                                                               \
@@ -127,24 +127,24 @@
         if (!vector->count) return true;                                                            \
         if (equal_func_is_identity)                                                                 \
             return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;         \
-        for (uint32_t idx = 0; idx < vector->count; ++idx) {                                        \
-            if (!__equal_func(vector->storage[idx], other->storage[idx]))                           \
+        for (uint32_t i = 0; i < vector->count; ++i) {                                              \
+            if (!__equal_func(vector->storage[i], other->storage[i]))                               \
                 return false;                                                                       \
         }                                                                                           \
         return true;                                                                                \
     }                                                                                               \
     SCOPE bool vector_contains_all_##T(Vector_##T *vector, Vector_##T *other) {                     \
         if (vector == other) return true;                                                           \
-        for (uint32_t idx = 0; idx < other->count; ++idx) {                                         \
-            if (vector_index_of_##T(vector, other->storage[idx]) == VECTOR_INDEX_NOT_FOUND)         \
+        for (uint32_t i = 0; i < other->count; ++i) {                                               \
+            if (vector_index_of_##T(vector, other->storage[i]) == VECTOR_INDEX_NOT_FOUND)           \
                 return false;                                                                       \
         }                                                                                           \
         return true;                                                                                \
     }                                                                                               \
     SCOPE bool vector_contains_any_##T(Vector_##T *vector, Vector_##T *other) {                     \
         if (vector == other) return true;                                                           \
-        for (uint32_t idx = 0; idx < other->count; ++idx) {                                         \
-            if (vector_index_of_##T(vector, other->storage[idx]) != VECTOR_INDEX_NOT_FOUND)         \
+        for (uint32_t i = 0; i < other->count; ++i) {                                               \
+            if (vector_index_of_##T(vector, other->storage[i]) != VECTOR_INDEX_NOT_FOUND)           \
                 return true;                                                                        \
         }                                                                                           \
         return false;                                                                               \
