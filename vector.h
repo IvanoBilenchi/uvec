@@ -9,7 +9,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#pragma mark - Constants
+
 #define VECTOR_INDEX_NOT_FOUND UINT32_MAX
+
+#pragma mark - Private macros
 
 #define MACRO_CONCAT(a, b) __MACRO_CONCAT(a, b)
 #define __MACRO_CONCAT(a, b) a##b
@@ -30,8 +34,12 @@
     #endif
 #endif /* __vector_unused */
 
-#define __vector_int32_next_power_2(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
+#define __vector_int32_next_power_2(x) \
+    (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
+
 #define __vector_identical(a, b) ((a) == (b))
+
+#pragma mark - Implementation
 
 #define __VECTOR_IMPL(T, SCOPE)                                                                     \
     SCOPE Vector_##T* vector_alloc_##T(void) {                                                      \
@@ -108,6 +116,12 @@
         }                                                                                           \
         return VECTOR_INDEX_NOT_FOUND;                                                              \
     }                                                                                               \
+    SCOPE uint32_t vector_index_of_reverse_##T(Vector_##T *vector, T item) {                        \
+        for (uint32_t i = vector->count; i-- != 0;) {                                               \
+            if (__equal_func(vector->storage[i], item)) return i;                                   \
+        }                                                                                           \
+        return VECTOR_INDEX_NOT_FOUND;                                                              \
+    }                                                                                               \
     SCOPE bool vector_push_unique_##T(Vector_##T *vector, T item) {                                 \
         bool insert = vector_index_of_##T(vector, item) == VECTOR_INDEX_NOT_FOUND;                  \
         if (insert) vector_push_##T(vector, item);                                                  \
@@ -150,16 +164,18 @@
         return false;                                                                               \
     }
 
-#define VECTOR_DECL(T)                                                                          \
-    typedef struct Vector_##T { uint32_t count, allocated; T *storage; } Vector_##T;            \
+#pragma mark - Public API
+
+#define VECTOR_DECL(T)                                                                              \
+    typedef struct Vector_##T { uint32_t count, allocated; T *storage; } Vector_##T;                \
     __VECTOR_IMPL(T, static __vector_inline __vector_unused)
 
-#define VECTOR_DECL_EQUATABLE(T, __equal_func)                                                  \
-    VECTOR_DECL(T);                                                                             \
+#define VECTOR_DECL_EQUATABLE(T, __equal_func)                                                      \
+    VECTOR_DECL(T);                                                                                 \
     __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func, 0)
 
-#define VECTOR_DECL_IDENTIFIABLE(T)                                                             \
-    VECTOR_DECL(T);                                                                             \
+#define VECTOR_DECL_IDENTIFIABLE(T)                                                                 \
+    VECTOR_DECL(T);                                                                                 \
     __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __vector_identical, 1)
 
 #define Vector(T) MACRO_CONCAT(Vector_, T)
@@ -171,16 +187,17 @@
 #define vector_copy(T, vec) MACRO_CONCAT(vector_copy_, T)(vec)
 
 #define VECTOR_INIT(T) (MACRO_CONCAT(Vector_, T)){ .count = 0, .allocated = 0, .storage = NULL }
-#define vector_deinit(vec) do {         \
-    if ((vec).storage) {                \
-        free((vec).storage);            \
-        (vec).storage = NULL;           \
-    }                                   \
-    (vec).count = (vec).allocated = 0;  \
+#define vector_deinit(vec) do {                                                                     \
+    if ((vec).storage) {                                                                            \
+        free((vec).storage);                                                                        \
+        (vec).storage = NULL;                                                                       \
+    }                                                                                               \
+    (vec).count = (vec).allocated = 0;                                                              \
 } while(0)
 
 #define vector_reserve_capacity(T, vec, size) MACRO_CONCAT(vector_reserve_capacity_, T)(vec, size)
-#define vector_expand(T, vec, size) MACRO_CONCAT(vector_reserve_capacity_, T)(vec, (vec->count + size))
+#define vector_expand(T, vec, size) \
+    MACRO_CONCAT(vector_reserve_capacity_, T)(vec, (vec->count + size))
 #define vector_shrink(T, vec) MACRO_CONCAT(vector_shrink_, T)(vec)
 
 #define vector_get(vec, idx) ((vec)->storage[(idx)])
@@ -191,7 +208,6 @@
 #define vector_count(vec) ((vec) ? (vec)->count : 0)
 
 #define vector_push(T, vec, item) MACRO_CONCAT(vector_push_, T)(vec, item)
-#define vector_push_lazy(T, vec, item) do { vector_ensure(T, vec); vector_push(T, vec, item); } while(0)
 #define vector_pop(T, vec) MACRO_CONCAT(vector_pop_, T)(vec)
 
 #define vector_remove_at(T, vec, idx) MACRO_CONCAT(vector_remove_at_, T)(vec, idx)
@@ -200,133 +216,150 @@
 #define vector_append(T, vec, vec_to_append) \
     MACRO_CONCAT(vector_append_array_, T)(vec, (vec_to_append)->storage, (vec_to_append)->count)
 
-#define vector_append_lazy(T, vec, vec_to_append) \
-    do { vector_ensure(T, vec); vector_append(T, vec, vec_to_append); } while(0)
+#define vector_append_array(T, vec, array, n) \
+    MACRO_CONCAT(vector_append_array_, T)(vec, array, n)
 
-#define vector_append_array(T, vec, array, n) MACRO_CONCAT(vector_append_array_, T)(vec, array, n)
-
-#define vector_append_array_lazy(T, vec, array, n) \
-    do { vector_ensure(T, vec); vector_append_array(T, vec, array, n); } while(0)
-
-#define vector_iterate(T, vec, item_name, idx_name, code)                               \
-    if (vector_count(vec)) {                                                            \
-        uint32_t __n_##idx_name = (vec)->count;                                         \
-        for (uint32_t idx_name = 0; idx_name != __n_##idx_name; ++idx_name) {           \
-            T item_name = vector_get((vec), (idx_name));                                \
-            code;                                                                       \
-        }                                                                               \
+#define vector_iterate(T, vec, item_name, idx_name, code)                                           \
+    if (vector_count(vec)) {                                                                        \
+        uint32_t __n_##idx_name = (vec)->count;                                                     \
+        for (uint32_t idx_name = 0; idx_name != __n_##idx_name; ++idx_name) {                       \
+            T item_name = vector_get((vec), (idx_name));                                            \
+            code;                                                                                   \
+        }                                                                                           \
     }
 
-#define vector_iterate_reverse(T, vec, item_name, idx_name, code)                       \
-    if (vector_count(vec)) {                                                            \
-        uint32_t __n_##idx_name = (vec)->count;                                         \
-        for (uint32_t idx_name = __n_##idx_name; idx_name-- != 0;) {                    \
-            T item_name = vector_get((vec), (idx_name));                                \
-            code;                                                                       \
-        }                                                                               \
+#define vector_iterate_reverse(T, vec, item_name, idx_name, code)                                   \
+    if (vector_count(vec)) {                                                                        \
+        for (uint32_t idx_name = (vec)->count; idx_name-- != 0;) {                                  \
+            T item_name = vector_get((vec), (idx_name));                                            \
+            code;                                                                                   \
+        }                                                                                           \
     }
 
-#define vector_foreach(T, vec, item_name, code) vector_iterate(T, vec, item_name, __i_##item_name, code)
-#define vector_foreach_reverse(T, vec, item_name, code) vector_iterate_reverse(T, vec, item_name, __i_##item_name, code)
+#define vector_foreach(T, vec, item_name, code) \
+    vector_iterate(T, vec, item_name, __i_##item_name, code)
+
+#define vector_foreach_reverse(T, vec, item_name, code) \
+    vector_iterate_reverse(T, vec, item_name, __i_##item_name, code)
 
 #define vector_index_of(T, vec, item) MACRO_CONCAT(vector_index_of_, T)(vec, item)
-#define vector_contains(T, vec, item) (MACRO_CONCAT(vector_index_of_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
-#define vector_contains_all(T, vec, other_vec) MACRO_CONCAT(vector_contains_all_, T)(vec, other_vec)
-#define vector_contains_any(T, vec, other_vec) MACRO_CONCAT(vector_contains_any_, T)(vec, other_vec)
+
+#define vector_index_of_reverse(T, vec, item) \
+    MACRO_CONCAT(vector_index_of_reverse_, T)(vec, item)
+
+#define vector_contains(T, vec, item) \
+    (MACRO_CONCAT(vector_index_of_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
+
+#define vector_contains_all(T, vec, other_vec) \
+    MACRO_CONCAT(vector_contains_all_, T)(vec, other_vec)
+
+#define vector_contains_any(T, vec, other_vec) \
+    MACRO_CONCAT(vector_contains_any_, T)(vec, other_vec)
+
 #define vector_remove(T, vec, item) MACRO_CONCAT(vector_remove_, T)(vec, item)
 #define vector_equals(T, vec_a, vec_b) MACRO_CONCAT(vector_equals_, T)(vec_a, vec_b)
 
 #define vector_push_unique(T, vec, item) MACRO_CONCAT(vector_push_unique_, T)(vec, item)
-#define vector_push_unique_lazy(T, vec, item) \
-    do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
 
-#define vector_append_unique(T, vec, vec_to_append)         \
-    vector_foreach(T, vec_to_append, __item, {              \
-        MACRO_CONCAT(vector_push_unique_, T)(vec, __item);  \
+#define vector_append_unique(T, vec, vec_to_append)                                                 \
+    vector_foreach(T, vec_to_append, __item, {                                                      \
+        MACRO_CONCAT(vector_push_unique_, T)(vec, __item);                                          \
     })
 
-#define vector_append_unique_lazy(T, vec, vec_to_append) \
-    do { vector_ensure(T, vec); vector_append_unique(T, vec, vec_to_append); } while(0)
-
-#define vector_remove_all_from(T, vec, vec_to_remove)   \
-    vector_foreach(T, vec_to_remove, __item, {          \
-        MACRO_CONCAT(vector_remove_, T)(vec, __item);   \
+#define vector_remove_all_from(T, vec, vec_to_remove)                                               \
+    vector_foreach(T, vec_to_remove, __item, {                                                      \
+        MACRO_CONCAT(vector_remove_, T)(vec, __item);                                               \
     })
 
-#define vector_deep_copy(T, dest, source, copy_func) do {           \
-    if (source) {                                                   \
-        dest = vector_alloc(T);                                     \
-        vector_reserve_capacity(T, dest, source->count);            \
-        vector_foreach(T, source, __##copy_func##_item, {           \
-            vector_push(T, dest, copy_func(__##copy_func##_item));  \
-        });                                                         \
-    } else {                                                        \
-        dest = NULL;                                                \
-    }                                                               \
+#define vector_deep_copy(T, dest, source, copy_func) do {                                           \
+    if (source) {                                                                                   \
+        dest = vector_alloc(T);                                                                     \
+        vector_reserve_capacity(T, dest, source->count);                                            \
+        vector_foreach(T, source, __##copy_func##_item, {                                           \
+            vector_push(T, dest, copy_func(__##copy_func##_item));                                  \
+        });                                                                                         \
+    } else {                                                                                        \
+        dest = NULL;                                                                                \
+    }                                                                                               \
 } while(0)
 
-#define vector_deep_free(T, vec, free_func) do {                                    \
-    vector_foreach(T, vec, __##free_func##_item, free_func(__##free_func##_item));  \
-    vector_free(T, vec);                                                            \
+#define vector_deep_free(T, vec, free_func) do {                                                    \
+    vector_foreach(T, vec, __##free_func##_item, free_func(__##free_func##_item));                  \
+    vector_free(T, vec);                                                                            \
 } while(0)
 
-#define vector_deep_append(T, dest, source, copy_func) do {         \
-    uint32_t __##copy_func##_count = vector_count(source);          \
-    if (__##copy_func##_count) {                                    \
-        vector_ensure(T, dest);                                     \
-        vector_expand(T, dest, __##copy_func##_count);              \
-        vector_foreach(T, source, __##copy_func##_item, {           \
-            vector_push(T, dest, copy_func(__##copy_func##_item));  \
-        });                                                         \
-    }                                                               \
+#define vector_deep_append(T, dest, source, copy_func) do {                                         \
+    uint32_t __##copy_func##_count = vector_count(source);                                          \
+    if (__##copy_func##_count) {                                                                    \
+        vector_ensure(T, dest);                                                                     \
+        vector_expand(T, dest, __##copy_func##_count);                                              \
+        vector_foreach(T, source, __##copy_func##_item, {                                           \
+            vector_push(T, dest, copy_func(__##copy_func##_item));                                  \
+        });                                                                                         \
+    }                                                                                               \
 } while(0)
 
-#define vector_deep_remove_all(T, vec, free_func) do {                              \
-    vector_foreach(T, vec, __##free_func##_item, free_func(__##free_func##_item));  \
-    vector_remove_all(UniversalRole, vec);                                          \
+#define vector_deep_remove_all(T, vec, free_func) do {                                              \
+    vector_foreach(T, vec, __##free_func##_item, free_func(__##free_func##_item));                  \
+    vector_remove_all(UniversalRole, vec);                                                          \
 } while(0)
 
-#define vector_first_index_where(T, vec, idx_var, bool_exp) do {    \
-    idx_var = VECTOR_INDEX_NOT_FOUND;                               \
-    vector_iterate(T, vec, _vec_item, __i_##idx_var, {              \
-        if ((bool_exp)) {                                           \
-            idx_var = __i_##idx_var;                                \
-            break;                                                  \
-        }                                                           \
-    });                                                             \
+#define vector_first_index_where(T, vec, idx_var, bool_exp) do {                                    \
+    idx_var = VECTOR_INDEX_NOT_FOUND;                                                               \
+    vector_iterate(T, vec, _vec_item, __i_##idx_var, {                                              \
+        if ((bool_exp)) {                                                                           \
+            idx_var = __i_##idx_var;                                                                \
+            break;                                                                                  \
+        }                                                                                           \
+    });                                                                                             \
 } while(0)
 
-#define vector_contains_where(T, vec, out_var, bool_exp) do {   \
-    out_var = false;                                            \
-    vector_foreach(T, vec, _vec_item, {                         \
-        if ((bool_exp)) {                                       \
-            out_var = true;                                     \
-            break;                                              \
-        }                                                       \
-    });                                                         \
+#define vector_contains_where(T, vec, out_var, bool_exp) do {                                       \
+    out_var = false;                                                                                \
+    vector_foreach(T, vec, _vec_item, {                                                             \
+        if ((bool_exp)) {                                                                           \
+            out_var = true;                                                                         \
+            break;                                                                                  \
+        }                                                                                           \
+    });                                                                                             \
 } while(0)
 
 #define vector_remove_first_where(T, vec, bool_exp) \
     vector_remove_and_free_first_where(T, vec, bool_exp, (void))
 
-#define vector_remove_and_free_first_where(T, vec, bool_exp, free_func)     \
-    vector_iterate(T, vec, _vec_item, __i_remove, {                         \
-        if ((bool_exp)) {                                                   \
-            vector_remove_at(T, vec, __i_remove);                           \
-            free_func(_vec_item);                                           \
-            break;                                                          \
-        }                                                                   \
+#define vector_remove_and_free_first_where(T, vec, bool_exp, free_func)                             \
+    vector_iterate(T, vec, _vec_item, __i_remove, {                                                 \
+        if ((bool_exp)) {                                                                           \
+            vector_remove_at(T, vec, __i_remove);                                                   \
+            free_func(_vec_item);                                                                   \
+            break;                                                                                  \
+        }                                                                                           \
     })
 
 #define vector_remove_where(T, vec, bool_exp) \
     vector_remove_and_free_where(T, vec, bool_exp, (void))
 
-#define vector_remove_and_free_where(T, vec, bool_exp, free_func)   \
-    vector_iterate_reverse(T, vec, _vec_item, __i_remove, {         \
-        if ((bool_exp)) {                                           \
-            vector_remove_at(T, vec, __i_remove);                   \
-            free_func(item_name);                                   \
-        }                                                           \
+#define vector_remove_and_free_where(T, vec, bool_exp, free_func)                                   \
+    vector_iterate_reverse(T, vec, _vec_item, __i_remove, {                                         \
+        if ((bool_exp)) {                                                                           \
+            vector_remove_at(T, vec, __i_remove);                                                   \
+            free_func(item_name);                                                                   \
+        }                                                                                           \
     })
+
+#define vector_push_lazy(T, vec, item) \
+    do { vector_ensure(T, vec); vector_push(T, vec, item); } while(0)
+
+#define vector_append_lazy(T, vec, vec_to_append) \
+    do { vector_ensure(T, vec); vector_append(T, vec, vec_to_append); } while(0)
+
+#define vector_append_array_lazy(T, vec, array, n) \
+    do { vector_ensure(T, vec); vector_append_array(T, vec, array, n); } while(0)
+
+#define vector_push_unique_lazy(T, vec, item) \
+    do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
+
+#define vector_append_unique_lazy(T, vec, vec_to_append) \
+    do { vector_ensure(T, vec); vector_append_unique(T, vec, vec_to_append); } while(0)
 
 #endif /* vector_h */
