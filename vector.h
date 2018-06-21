@@ -7,6 +7,7 @@
 #define vector_h
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #pragma mark - Constants
