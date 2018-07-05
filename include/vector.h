@@ -769,6 +769,19 @@
  * @see qsort
  */
 #define vector_sort(T, vec, __comp_func) \
-    if (vec) qsort((vec)->storage, (vec)->count, sizeof(T), __comp_func)
+    vector_sort_range(T, vec, 0, (vec)->count, __comp_func)
+
+/**
+ * Sorts the elements in the specified range.
+ *
+ * @param vec Vector instance.
+ * @param start Range start index.
+ * @param len Range length.
+ * @param __comp_func qsort-compatible sorting function.
+ *
+ * @see qsort
+ */
+#define vector_sort_range(T, vec, start, len, __comp_func) \
+    if (vec) qsort((vec)->storage + start, len, sizeof(T), __comp_func)
 
 #endif /* vector_h */
