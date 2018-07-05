@@ -31,7 +31,8 @@ To run the tests: `cd test`, then `make run`.
 - [x] Tests
 - [ ] Better documentation (html? usage examples?)
 - [ ] Better tests
-- [ ] More goodies (sorting, reversing, ...)
+- [x] Sorting and reversing
+- [ ] More goodies (???)
 
 
 ### License
