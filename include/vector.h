@@ -416,6 +416,20 @@
 #define vector_append_array_lazy(T, vec, array, n) \
     do { vector_ensure(T, vec); vector_append_array(T, vec, array, n); } while(0)
 
+/**
+ * Reverses the vector.
+ *
+ * @param vec Vector instance.
+ */
+#define vector_reverse(T, vec) do {                                                                 \
+    uint32_t count = (vec)->count;                                                                  \
+    for (uint32_t __vec_rev_i = 0; __vec_rev_i < count / 2; ++__vec_rev_i) {                        \
+        T temp = (vec)->storage[__vec_rev_i];                                                       \
+        (vec)->storage[__vec_rev_i] = (vec)->storage[count - __vec_rev_i - 1];                      \
+        (vec)->storage[count - __vec_rev_i - 1] = temp;                                             \
+    }                                                                                               \
+} while(0)
+
 /// @name Iteration
 #pragma mark - Iteration
 
@@ -745,5 +759,16 @@
             free_func(item_name);                                                                   \
         }                                                                                           \
     })
+
+/**
+ * Sorts the vector.
+ *
+ * @param vec Vector instance.
+ * @param __comp_func qsort-compatible sorting function.
+ *
+ * @see qsort
+ */
+#define vector_sort(T, vec, __comp_func) \
+    if (vec) qsort((vec)->storage, (vec)->count, sizeof(T), __comp_func)
 
 #endif /* vector_h */
