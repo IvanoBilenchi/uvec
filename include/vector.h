@@ -158,7 +158,7 @@
  * Generates function definitions for the specified equatable vector type.
  *
  * @param SCOPE Scope of the definitions.
- * @param __equal_func Equality function.
+ * @param __equal_func Equality function: (T, T) -> bool
  * @param equal_func_is_identity If true, generated code is optimized assuming __equal_func is ==.
  */
 #define __VECTOR_IMPL_EQUATABLE(T, SCOPE, __equal_func, equal_func_is_identity)                     \
@@ -678,18 +678,18 @@
 
 /**
  * Performs a "deep copy": a new vector is allocated and assigned to 'dest',
- * then all the elements in 'source' are copied via 'copy_func' and pushed to 'dest'.
+ * then all the elements in 'source' are copied via '__copy_func' and pushed to 'dest'.
  *
  * @param dest Destination vector.
  * @param source Source vector.
- * @param copy_func Copy function: (T) -> T
+ * @param __copy_func Copy function: (T) -> T
  */
-#define vector_deep_copy(T, dest, source, copy_func) do {                                           \
+#define vector_deep_copy(T, dest, source, __copy_func) do {                                         \
     if (source) {                                                                                   \
         dest = vector_alloc(T);                                                                     \
         vector_reserve_capacity(T, dest, source->count);                                            \
-        vector_foreach(T, source, __##copy_func##_item, {                                           \
-            vector_push(T, dest, copy_func(__##copy_func##_item));                                  \
+        vector_foreach(T, source, __##__copy_func##_item, {                                         \
+            vector_push(T, dest, __copy_func(__##__copy_func##_item));                              \
         });                                                                                         \
     } else {                                                                                        \
         dest = NULL;                                                                                \
@@ -697,44 +697,44 @@
 } while(0)
 
 /**
- * Performs a "deep free": 'free_func' is called on every
+ * Performs a "deep free": '__free_func' is called on every
  * vector element before the whole vector is deallocated.
  *
  * @param vec Vector instance.
- * @param free_func Free function: (T) -> void
+ * @param __free_func Free function: (T) -> void
  */
-#define vector_deep_free(T, vec, free_func) do {                                                    \
-    vector_foreach(T, vec, __##free_func##_item, free_func(__##free_func##_item));                  \
+#define vector_deep_free(T, vec, __free_func) do {                                                  \
+    vector_foreach(T, vec, __##__free_func##_item, __free_func(__##__free_func##_item));            \
     vector_free(T, vec);                                                                            \
 } while(0)
 
 /**
  * Performs a "deep append": all the elements in 'source' are copied
- * via 'copy_func' and pushed to 'dest'. If 'dest' is NULL, it is allocated beforehand.
+ * via '__copy_func' and pushed to 'dest'. If 'dest' is NULL, it is allocated beforehand.
  *
  * @param dest Destination vector.
  * @param source Source vector.
- * @param copy_func Copy function: (T) -> T
+ * @param __copy_func Copy function: (T) -> T
  */
-#define vector_deep_append(T, dest, source, copy_func) do {                                         \
-    uint32_t __##copy_func##_count = vector_count(source);                                          \
-    if (__##copy_func##_count) {                                                                    \
+#define vector_deep_append(T, dest, source, __copy_func) do {                                       \
+    uint32_t __##__copy_func##_count = vector_count(source);                                        \
+    if (__##__copy_func##_count) {                                                                  \
         vector_ensure(T, dest);                                                                     \
-        vector_expand(T, dest, __##copy_func##_count);                                              \
-        vector_foreach(T, source, __##copy_func##_item, {                                           \
-            vector_push(T, dest, copy_func(__##copy_func##_item));                                  \
+        vector_expand(T, dest, __##__copy_func##_count);                                            \
+        vector_foreach(T, source, __##__copy_func##_item, {                                         \
+            vector_push(T, dest, __copy_func(__##__copy_func##_item));                              \
         });                                                                                         \
     }                                                                                               \
 } while(0)
 
 /**
- * Performs a "deep remove all": all elements are removed and deallocated via 'free_func'.
+ * Performs a "deep remove all": all elements are removed and deallocated via '__free_func'.
  *
  * @param vec Vector instance.
- * @param free_func Free function: (T) -> void
+ * @param __free_func Free function: (T) -> void
  */
-#define vector_deep_remove_all(T, vec, free_func) do {                                              \
-    vector_foreach(T, vec, __##free_func##_item, free_func(__##free_func##_item));                  \
+#define vector_deep_remove_all(T, vec, __free_func) do {                                            \
+    vector_foreach(T, vec, __##__free_func##_item, __free_func(__##__free_func##_item));            \
     vector_remove_all(UniversalRole, vec);                                                          \
 } while(0)
 
@@ -789,13 +789,13 @@
  *
  * @param vec Vector instance.
  * @param bool_exp Boolean expression.
- * @param free_func Free function: (T) -> void
+ * @param __free_func Free function: (T) -> void
  */
-#define vector_remove_and_free_first_where(T, vec, bool_exp, free_func)                             \
+#define vector_remove_and_free_first_where(T, vec, bool_exp, __free_func)                           \
     vector_iterate(T, vec, _vec_item, __i_remove, {                                                 \
         if ((bool_exp)) {                                                                           \
             vector_remove_at(T, vec, __i_remove);                                                   \
-            free_func(_vec_item);                                                                   \
+            __free_func(_vec_item);                                                                 \
             break;                                                                                  \
         }                                                                                           \
     })
@@ -814,13 +814,13 @@
  *
  * @param vec Vector instance.
  * @param bool_exp Boolean expression.
- * @param free_func Free function: (T) -> void
+ * @param __free_func Free function: (T) -> void
  */
-#define vector_remove_and_free_where(T, vec, bool_exp, free_func)                                   \
+#define vector_remove_and_free_where(T, vec, bool_exp, __free_func)                                 \
     vector_iterate_reverse(T, vec, _vec_item, __i_remove, {                                         \
         if ((bool_exp)) {                                                                           \
             vector_remove_at(T, vec, __i_remove);                                                   \
-            free_func(item_name);                                                                   \
+            __free_func(item_name);                                                                 \
         }                                                                                           \
     })
 
