@@ -16,14 +16,19 @@
 #include <stdlib.h>
 
 #pragma mark - Constants
+/// @name Constants
 
+/// Index returned by find-like functions when a matching element cannot be found.
 #define VECTOR_INDEX_NOT_FOUND UINT32_MAX
 
 #pragma mark - Private API and Implementation
+/// @name Private
 
+/// Concatenates the 'a' and 'b' tokens, allowing 'a' and 'b' to be macro-expanded.
 #define MACRO_CONCAT(a, b) __MACRO_CONCAT(a, b)
 #define __MACRO_CONCAT(a, b) a##b
 
+/// Cross-platform 'inline' specifier.
 #ifndef __vector_inline
     #ifdef _MSC_VER
         #define __vector_inline __inline
@@ -32,6 +37,7 @@
     #endif
 #endif /* __vector_inline */
 
+/// Cross-platform 'unused' directive.
 #ifndef __vector_unused
     #if (defined __clang__ && __clang_major__ >= 3) || (defined __GNUC__ && __GNUC__ >= 3)
         #define __vector_unused __attribute__ ((__unused__))
@@ -40,20 +46,40 @@
     #endif
 #endif /* __vector_unused */
 
+/**
+ * Rounds x to the next power of 2.
+ *
+ * @param x 32 bit integer to round.
+ */
 #define __vector_int32_next_power_2(x) \
     (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
 
+/**
+ * Identity macro.
+ *
+ * @param a LHS of the identity.
+ * @param b RHS of the identity.
+ * @return True if a and b are identical, false otherwise.
+ */
 #define __vector_identical(a, b) ((a) == (b))
 
+/**
+ * Generates function definitions for the specified vector type.
+ *
+ * @param SCOPE Scope of the definitions.
+ */
 #define __VECTOR_IMPL(T, SCOPE)                                                                     \
+                                                                                                    \
     SCOPE Vector_##T* vector_alloc_##T(void) {                                                      \
         return calloc(1, sizeof(Vector_##T));                                                       \
     }                                                                                               \
+                                                                                                    \
     SCOPE void vector_free_##T(Vector_##T *vector) {                                                \
         if (!vector) return;                                                                        \
         if (vector->allocated) free(vector->storage);                                               \
         free(vector);                                                                               \
     }                                                                                               \
+                                                                                                    \
     SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, uint32_t capacity) {                 \
         if (vector->allocated < capacity) {                                                         \
             __vector_int32_next_power_2(capacity);                                                  \
@@ -61,23 +87,30 @@
             vector->storage = realloc(vector->storage, sizeof(T) * capacity);                       \
         }                                                                                           \
     }                                                                                               \
+                                                                                                    \
     SCOPE void vector_append_array_##T(Vector_##T *vector, T const *array, uint32_t n) {            \
         if (!(n && array)) return;                                                                  \
+                                                                                                    \
         uint32_t old_count = vector->count;                                                         \
         uint32_t new_count = old_count + n;                                                         \
+                                                                                                    \
         vector->count = new_count;                                                                  \
         vector_reserve_capacity_##T(vector, new_count);                                             \
         memcpy(&(vector->storage[old_count]), array, n * sizeof(T));                                \
     }                                                                                               \
+                                                                                                    \
     SCOPE Vector_##T* vector_copy_##T(Vector_##T const *vector) {                                   \
         Vector_##T* copy = vector_alloc_##T();                                                      \
         vector_append_array_##T(copy, vector->storage, vector->count);                              \
         return copy;                                                                                \
     }                                                                                               \
+                                                                                                    \
     SCOPE void vector_shrink_##T(Vector_##T *vector) {                                              \
         uint32_t new_allocated = vector->count;                                                     \
+                                                                                                    \
         if (new_allocated) {                                                                        \
             __vector_int32_next_power_2(new_allocated);                                             \
+                                                                                                    \
             if (new_allocated < vector->allocated) {                                                \
                 vector->allocated = new_allocated;                                                  \
                 vector->storage = realloc(vector->storage, sizeof(T) * new_allocated);              \
@@ -87,84 +120,115 @@
             vector->allocated = 0;                                                                  \
         }                                                                                           \
     }                                                                                               \
+                                                                                                    \
     SCOPE void vector_push_##T(Vector_##T *vector, T item) {                                        \
         uint32_t allocated = vector->allocated;                                                     \
         uint32_t count = vector->count;                                                             \
+                                                                                                    \
         if (count == allocated) {                                                                   \
             allocated = allocated ? allocated<<1 : 2;                                               \
             vector->allocated = allocated;                                                          \
             vector->storage = realloc(vector->storage, sizeof(T) * allocated);                      \
         }                                                                                           \
+                                                                                                    \
         vector->storage[count] = item;                                                              \
         vector->count++;                                                                            \
     }                                                                                               \
+                                                                                                    \
     SCOPE T vector_pop_##T(Vector_##T *vector) {                                                    \
         return vector->storage[--vector->count];                                                    \
     }                                                                                               \
+                                                                                                    \
     SCOPE void vector_remove_at_##T(Vector_##T *vector, uint32_t idx) {                             \
         uint32_t count = vector->count;                                                             \
+                                                                                                    \
         if (idx < count - 1) {                                                                      \
             size_t block_size = (count - idx - 1) * sizeof(T);                                      \
             memmove(&(vector->storage[idx]), &(vector->storage[idx + 1]), block_size);              \
         }                                                                                           \
+                                                                                                    \
         vector->count--;                                                                            \
     }                                                                                               \
+                                                                                                    \
     SCOPE void vector_remove_all_##T(Vector_##T *vector) {                                          \
         vector->count = 0;                                                                          \
     }
 
+/**
+ * Generates function definitions for the specified equatable vector type.
+ *
+ * @param SCOPE Scope of the definitions.
+ * @param __equal_func Equality function.
+ * @param equal_func_is_identity If true, generated code is optimized assuming __equal_func is ==.
+ */
 #define __VECTOR_IMPL_EQUATABLE(T, SCOPE, __equal_func, equal_func_is_identity)                     \
+                                                                                                    \
     SCOPE uint32_t vector_index_of_##T(Vector_##T *vector, T item) {                                \
         for (uint32_t i = 0; i < vector->count; ++i) {                                              \
             if (__equal_func(vector->storage[i], item)) return i;                                   \
         }                                                                                           \
         return VECTOR_INDEX_NOT_FOUND;                                                              \
     }                                                                                               \
+                                                                                                    \
     SCOPE uint32_t vector_index_of_reverse_##T(Vector_##T *vector, T item) {                        \
         for (uint32_t i = vector->count; i-- != 0;) {                                               \
             if (__equal_func(vector->storage[i], item)) return i;                                   \
         }                                                                                           \
         return VECTOR_INDEX_NOT_FOUND;                                                              \
     }                                                                                               \
+                                                                                                    \
     SCOPE bool vector_push_unique_##T(Vector_##T *vector, T item) {                                 \
         bool insert = vector_index_of_##T(vector, item) == VECTOR_INDEX_NOT_FOUND;                  \
         if (insert) vector_push_##T(vector, item);                                                  \
         return insert;                                                                              \
     }                                                                                               \
+                                                                                                    \
     SCOPE bool vector_remove_##T(Vector_##T *vector, T item) {                                      \
         uint32_t idx = vector_index_of_##T(vector, item);                                           \
+                                                                                                    \
         if (idx != VECTOR_INDEX_NOT_FOUND) {                                                        \
             vector_remove_at_##T(vector, idx);                                                      \
             return true;                                                                            \
         }                                                                                           \
+                                                                                                    \
         return false;                                                                               \
     }                                                                                               \
+                                                                                                    \
     SCOPE bool vector_equals_##T(Vector_##T *vector, Vector_##T *other) {                           \
         if (vector == other) return true;                                                           \
         if (vector->count != other->count) return false;                                            \
         if (!vector->count) return true;                                                            \
+                                                                                                    \
         if (equal_func_is_identity)                                                                 \
             return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;         \
+                                                                                                    \
         for (uint32_t i = 0; i < vector->count; ++i) {                                              \
             if (!__equal_func(vector->storage[i], other->storage[i]))                               \
                 return false;                                                                       \
         }                                                                                           \
+                                                                                                    \
         return true;                                                                                \
     }                                                                                               \
+                                                                                                    \
     SCOPE bool vector_contains_all_##T(Vector_##T *vector, Vector_##T *other) {                     \
         if (vector == other) return true;                                                           \
+                                                                                                    \
         for (uint32_t i = 0; i < other->count; ++i) {                                               \
             if (vector_index_of_##T(vector, other->storage[i]) == VECTOR_INDEX_NOT_FOUND)           \
                 return false;                                                                       \
         }                                                                                           \
+                                                                                                    \
         return true;                                                                                \
     }                                                                                               \
+                                                                                                    \
     SCOPE bool vector_contains_any_##T(Vector_##T *vector, Vector_##T *other) {                     \
         if (vector == other) return true;                                                           \
+                                                                                                    \
         for (uint32_t i = 0; i < other->count; ++i) {                                               \
             if (vector_index_of_##T(vector, other->storage[i]) != VECTOR_INDEX_NOT_FOUND)           \
                 return true;                                                                        \
         }                                                                                           \
+                                                                                                    \
         return false;                                                                               \
     }
 
