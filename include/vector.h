@@ -152,6 +152,18 @@
                                                                                                     \
     SCOPE void vector_remove_all_##T(Vector_##T *vector) {                                          \
         vector->count = 0;                                                                          \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE void vector_reverse_##T(Vector_##T *vector) {                                             \
+        uint32_t count = vector->count;                                                             \
+                                                                                                    \
+        for (uint32_t i = 0; i < count / 2; ++i) {                                                  \
+            T temp = vector->storage[i];                                                            \
+            uint32_t swap_idx = count - i - 1;                                                      \
+                                                                                                    \
+            vector->storage[i] = vector->storage[swap_idx];                                         \
+            vector->storage[swap_idx] = temp;                                                       \
+        }                                                                                           \
     }
 
 /**
@@ -485,14 +497,7 @@
  *
  * @param vec Vector instance.
  */
-#define vector_reverse(T, vec) do {                                                                 \
-    uint32_t count = (vec)->count;                                                                  \
-    for (uint32_t __vec_rev_i = 0; __vec_rev_i < count / 2; ++__vec_rev_i) {                        \
-        T temp = (vec)->storage[__vec_rev_i];                                                       \
-        (vec)->storage[__vec_rev_i] = (vec)->storage[count - __vec_rev_i - 1];                      \
-        (vec)->storage[count - __vec_rev_i - 1] = temp;                                             \
-    }                                                                                               \
-} while(0)
+#define vector_reverse(T, vec) MACRO_CONCAT(vector_reverse_, T)(vec)
 
 /// @name Iteration
 #pragma mark - Iteration
