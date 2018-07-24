@@ -64,6 +64,42 @@
  */
 #define __vector_identical(a, b) ((a) == (b))
 
+/// Defines a new vector struct.
+#define __VECTOR_DEF_TYPE(T) \
+    typedef struct Vector_##T { uint32_t count, allocated; T *storage; } Vector_##T;
+
+/**
+ * Generates function declarations for the specified vector type.
+ *
+ * @param SCOPE Scope of the declarations.
+ */
+#define __VECTOR_DECL(T, SCOPE)                                                                     \
+    SCOPE Vector_##T* vector_alloc_##T(void);                                                       \
+    SCOPE void vector_free_##T(Vector_##T *vector);                                                 \
+    SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, uint32_t capacity);                  \
+    SCOPE void vector_append_array_##T(Vector_##T *vector, T const *array, uint32_t n);             \
+    SCOPE Vector_##T* vector_copy_##T(Vector_##T const *vector);                                    \
+    SCOPE void vector_shrink_##T(Vector_##T *vector);                                               \
+    SCOPE void vector_push_##T(Vector_##T *vector, T item);                                         \
+    SCOPE T vector_pop_##T(Vector_##T *vector);                                                     \
+    SCOPE void vector_remove_at_##T(Vector_##T *vector, uint32_t idx);                              \
+    SCOPE void vector_remove_all_##T(Vector_##T *vector);                                           \
+    SCOPE void vector_reverse_##T(Vector_##T *vector);
+
+/**
+ * Generates function declarations for the specified equatable vector type.
+ *
+ * @param SCOPE Scope of the declarations.
+ */
+#define __VECTOR_DECL_EQUATABLE(T, SCOPE)                                                           \
+    SCOPE uint32_t vector_index_of_##T(Vector_##T *vector, T item);                                 \
+    SCOPE uint32_t vector_index_of_reverse_##T(Vector_##T *vector, T item);                         \
+    SCOPE bool vector_push_unique_##T(Vector_##T *vector, T item);                                  \
+    SCOPE bool vector_remove_##T(Vector_##T *vector, T item);                                       \
+    SCOPE bool vector_equals_##T(Vector_##T *vector, Vector_##T *other);                            \
+    SCOPE bool vector_contains_all_##T(Vector_##T *vector, Vector_##T *other);                      \
+    SCOPE bool vector_contains_any_##T(Vector_##T *vector, Vector_##T *other);
+
 /**
  * Generates function definitions for the specified vector type.
  *
@@ -250,24 +286,56 @@
 /// @name Type definitions
 #pragma mark - Type definitions
 
-/// Defines a new vector type.
+/// Declares a new vector type.
 #define VECTOR_DECL(T)                                                                              \
-    typedef struct Vector_##T { uint32_t count, allocated; T *storage; } Vector_##T;                \
-    __VECTOR_IMPL(T, static __vector_inline __vector_unused)
+    __VECTOR_DEF_TYPE(T)                                                                            \
+    __VECTOR_DECL(T, __vector_unused)
+
+/// Declares a new equatable vector type.
+#define VECTOR_DECL_EQUATABLE(T)                                                                    \
+    __VECTOR_DEF_TYPE(T)                                                                            \
+    __VECTOR_DECL(T, __vector_unused)                                                               \
+    __VECTOR_DECL_EQUATABLE(T, __vector_unused)
+
+/// Implements a new vector type.
+#define VECTOR_IMPL(T) \
+    __VECTOR_IMPL(T, __vector_unused)
 
 /**
- * Defines a new equatable vector type,
+ * Implements a new equatable vector type,
  * e.g. a vector whose elements can be compared via __equal_func.
  *
  * @param __equal_func Equality function: (T, T) -> bool
  */
-#define VECTOR_DECL_EQUATABLE(T, __equal_func)                                                      \
-    VECTOR_DECL(T);                                                                                 \
+#define VECTOR_IMPL_EQUATABLE(T, __equal_func)                                                      \
+    __VECTOR_IMPL(T, __vector_unused)                                                               \
+    __VECTOR_IMPL_EQUATABLE(T, __vector_unused, __equal_func, 0)
+
+/// Implements a new equatable vector type whose elements can be compared via ==.
+#define VECTOR_IMPL_IDENTIFIABLE(T)                                                                 \
+    __VECTOR_IMPL(T, __vector_unused)                                                               \
+    __VECTOR_IMPL_EQUATABLE(T, __vector_unused, __vector_identical, 1)
+
+/// Defines a new static vector type.
+#define VECTOR_INIT(T)                                                                              \
+    __VECTOR_DEF_TYPE(T)                                                                            \
+    __VECTOR_IMPL(T, static __vector_inline __vector_unused)
+
+/**
+ * Defines a new static equatable vector type,
+ * e.g. a vector whose elements can be compared via __equal_func.
+ *
+ * @param __equal_func Equality function: (T, T) -> bool
+ */
+#define VECTOR_INIT_EQUATABLE(T, __equal_func)                                                      \
+    __VECTOR_DEF_TYPE(T)                                                                            \
+    __VECTOR_IMPL(T, static __vector_inline __vector_unused)                                        \
     __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func, 0)
 
-/// Defines a new equatable vector type whose elements can be compared via ==.
-#define VECTOR_DECL_IDENTIFIABLE(T)                                                                 \
-    VECTOR_DECL(T);                                                                                 \
+/// Defines a new static equatable vector type whose elements can be compared via ==.
+#define VECTOR_INIT_IDENTIFIABLE(T)                                                                 \
+    __VECTOR_DEF_TYPE(T)                                                                            \
+    __VECTOR_IMPL(T, static __vector_inline __vector_unused)                                        \
     __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __vector_identical, 1)
 
 /// @name Declaration
@@ -318,7 +386,7 @@
  *
  * @return Initialized vector instance.
  */
-#define VECTOR_INIT(T) ((MACRO_CONCAT(Vector_, T)){ .count = 0, .allocated = 0, .storage = NULL })
+#define vector_init(T) ((MACRO_CONCAT(Vector_, T)){ .count = 0, .allocated = 0, .storage = NULL })
 
 /**
  * De-initializes a vector previously initialized via VECTOR_INIT.
