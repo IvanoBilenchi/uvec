@@ -2,25 +2,31 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include <string.h>
+
 #include "vector.h"
 
 #pragma mark - Declarations
 
 #define array_size(array) (sizeof(array) / sizeof(*array))
 
-VECTOR_DECL_IDENTIFIABLE(int);
+VECTOR_INIT_IDENTIFIABLE(int);
 
-#pragma mark - Test
+#pragma mark - Utilities
 
-int main(void) {
+static int int_comparator(const void * a, const void * b) {
+    return *(int*)a - *(int*)b;
+}
+
+#pragma mark - Tests
+
+static void test_basic() {
     Vector(int) *v1 = vector_alloc(int);
     assert(vector_count(v1) == 0u);
     
     vector_push(int, v1, 1);
     assert(vector_pop(int, v1) == 1);
     
-    int const array[] = { 1, 2, 3, 4 };
+    int const array[] = { 3, 2, 4, 1 };
     vector_append_array(int, v1, array, array_size(array));
     vector_push_unique(int, v1, array[0]);
     vector_push_unique(int, v1, array[1]);
@@ -54,6 +60,37 @@ int main(void) {
     
     vector_free(int, v1);
     vector_free(int, v2);
+}
 
+static void test_reverse() {
+    int const array[] = { 1, 2, 3, 4 };
+    int const result[] = { 4, 3, 2, 1 };
+    
+    Vector(int) *v = vector_alloc(int);
+    vector_append_array(int, v, array, array_size(array));
+    vector_reverse(int, v);
+    
+    assert(memcmp(v->storage, result, sizeof(result)) == 0);
+    vector_free(int, v);
+}
+
+static void test_sort() {
+    int const array[] = { 3, 2, 4, 1 };
+    int const result[] = { 1, 2, 3, 4 };
+    
+    Vector(int) *v = vector_alloc(int);
+    vector_append_array(int, v, array, array_size(array));
+    vector_sort(int, v, int_comparator);
+    
+    assert(memcmp(v->storage, result, sizeof(result)) == 0);
+    vector_free(int, v);
+}
+
+#pragma mark - Main
+
+int main(void) {
+    test_basic();
+    test_reverse();
+    test_sort();
     printf("Test passed.\n");
 }
