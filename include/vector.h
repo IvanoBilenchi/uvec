@@ -559,6 +559,18 @@
     MACRO_CONCAT(vector_append_array_, T)(vec, array, n)
 
 /**
+ * Appends multiple items to the specified vector.
+ *
+ * @param vec Vector instance.
+ * @param ... Elements to append.
+ */
+#define vector_append_items(T, vec, ...) do {                                                       \
+    T const __vec_##T##_init[] = { __VA_ARGS__ };                                                   \
+    size_t __vec_##T##_init_size = sizeof(__vec_##T##_init) / sizeof(*__vec_##T##_init);            \
+    vector_append_array(T, vec, __vec_##T##_init, __vec_##T##_init_size);                           \
+} while(0)
+
+/**
  * 'vector_ensure' followed by 'vector_push'.
  *
  * @param vec Vector instance.
