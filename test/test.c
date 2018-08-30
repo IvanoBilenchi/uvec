@@ -14,7 +14,9 @@ VECTOR_INIT_IDENTIFIABLE(int);
 #pragma mark - Utilities
 
 static int int_comparator(const void * a, const void * b) {
-    return *(int*)a - *(int*)b;
+    int va = *(const int*)a;
+    int vb = *(const int*)b;
+    return (va > vb) - (va < vb);
 }
 
 #pragma mark - Tests
