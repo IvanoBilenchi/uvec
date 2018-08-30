@@ -1,7 +1,7 @@
 /**
  * Vector(T) - a type-safe, generic C vector.
  *
- * If you despise macros, I've got some bad news for you ;)
+ * If you despise macros, I've got bad news for you ;)
  * Inspired by klib ( https://github.com/attractivechaos/klib )
  * MIT licensed.
  *
@@ -56,6 +56,18 @@
     (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
 
 /**
+ * Expands the vector if the allocated slots have all been filled up.
+ *
+ * @param v Vector instance.
+ */
+#define __vector_expand_if_required(T, vec) do {                                                    \
+    if ((vec)->count == (vec)->allocated) {                                                         \
+        (vec)->allocated = (vec)->allocated ? (vec)->allocated<<1 : 2;                              \
+        (vec)->storage = realloc((vec)->storage, sizeof(T) * (vec)->allocated);                     \
+    }                                                                                               \
+} while(0)
+
+/**
  * Identity macro.
  *
  * @param a LHS of the identity.
@@ -83,6 +95,7 @@
     SCOPE void vector_push_##T(Vector_##T *vector, T item);                                         \
     SCOPE T vector_pop_##T(Vector_##T *vector);                                                     \
     SCOPE void vector_remove_at_##T(Vector_##T *vector, uint32_t idx);                              \
+    SCOPE void vector_insert_at_##T(Vector_##T *vector, uint32_t idx, T item);                      \
     SCOPE void vector_remove_all_##T(Vector_##T *vector);                                           \
     SCOPE void vector_reverse_##T(Vector_##T *vector);
 
@@ -159,17 +172,8 @@
     }                                                                                               \
                                                                                                     \
     SCOPE void vector_push_##T(Vector_##T *vector, T item) {                                        \
-        uint32_t allocated = vector->allocated;                                                     \
-        uint32_t count = vector->count;                                                             \
-                                                                                                    \
-        if (count == allocated) {                                                                   \
-            allocated = allocated ? allocated<<1 : 2;                                               \
-            vector->allocated = allocated;                                                          \
-            vector->storage = realloc(vector->storage, sizeof(T) * allocated);                      \
-        }                                                                                           \
-                                                                                                    \
-        vector->storage[count] = item;                                                              \
-        vector->count++;                                                                            \
+        __vector_expand_if_required(T, vector);                                                     \
+        vector->storage[vector->count++] = item;                                                    \
     }                                                                                               \
                                                                                                     \
     SCOPE T vector_pop_##T(Vector_##T *vector) {                                                    \
@@ -185,6 +189,18 @@
         }                                                                                           \
                                                                                                     \
         vector->count--;                                                                            \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE void vector_insert_at_##T(Vector_##T *vector, uint32_t idx, T item) {                     \
+        __vector_expand_if_required(T, vector);                                                     \
+                                                                                                    \
+        if (idx < vector->count) {                                                                  \
+            size_t block_size = (vector->count - idx) * sizeof(T);                                  \
+            memmove(&(vector->storage[idx + 1]), &(vector->storage[idx]), block_size);              \
+        }                                                                                           \
+                                                                                                    \
+        vector->storage[idx] = item;                                                                \
+        vector->count++;                                                                            \
     }                                                                                               \
                                                                                                     \
     SCOPE void vector_remove_all_##T(Vector_##T *vector) {                                          \
@@ -506,6 +522,15 @@
  * @param idx Index of the element to remove.
  */
 #define vector_remove_at(T, vec, idx) MACRO_CONCAT(vector_remove_at_, T)(vec, idx)
+
+/**
+ * Inserts an element at the specified index.
+ *
+ * @param vec Vector instance.
+ * @param idx Index at which the element should be inserted.
+ * @param item Element to insert.
+ */
+#define vector_insert_at(T, vec, idx, item) MACRO_CONCAT(vector_insert_at_, T)(vec, idx, item)
 
 /**
  * Removes all the elements in the vector.
