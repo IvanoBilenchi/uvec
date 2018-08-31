@@ -931,7 +931,7 @@
     vector_iterate_reverse(T, vec, _vec_item, __i_remove, {                                         \
         if ((bool_exp)) {                                                                           \
             vector_remove_at(T, vec, __i_remove);                                                   \
-            __free_func(item_name);                                                                 \
+            __free_func(_vec_item);                                                                 \
         }                                                                                           \
     })
 
