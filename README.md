@@ -2,7 +2,7 @@
 
 ### Author
 
-Ivano Bilenchi ([@IvanoBilenchi](http://www.twitter.com/IvanoBilenchi))
+Ivano Bilenchi ([@IvanoBilenchi](https://www.twitter.com/IvanoBilenchi))
 
 
 ### Description
@@ -29,10 +29,8 @@ To run the tests: `cd test`, then `make run`.
 
 - [x] Documentation
 - [x] Tests
-- [ ] Better documentation (html? usage examples?)
-- [ ] Better tests
 - [x] Sorting and reversing
-- [ ] More goodies (???)
+- [ ] Better documentation (html? usage examples?)
 
 
 ### License
