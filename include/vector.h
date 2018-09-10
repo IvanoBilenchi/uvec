@@ -846,7 +846,7 @@
  */
 #define vector_deep_remove_all(T, vec, __free_func) do {                                            \
     vector_foreach(T, vec, __##__free_func##_item, __free_func(__##__free_func##_item));            \
-    vector_remove_all(UniversalRole, vec);                                                          \
+    vector_remove_all(T, vec);                                                                      \
 } while(0)
 
 /// @name Higher order
