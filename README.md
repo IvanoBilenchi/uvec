@@ -2,7 +2,7 @@
 
 ### Author
 
-Ivano Bilenchi ([@IvanoBilenchi](https://www.twitter.com/IvanoBilenchi))
+[Ivano Bilenchi](https://ivanobilenchi.com)
 
 
 ### Description
@@ -13,8 +13,11 @@ Macro-heavy, not for the faint of heart. Inspired by [klib](https://github.com/a
 
 ### Documentation
 
-See comments in the *Public API* section of [vector.h](include/vector.h). For usage examples, see [test.c](test/test.c).
-To run the tests: `cd test`, then `make run`.
+Documentation for the project is provided in form of docstrings in the *Public API* section of [vector.h](include/vector.h). HTML and LaTeX docs can be generated via [Doxygen](http://www.doxygen.nl). For usage examples, see [test.c](test/test.c).
+
+**Run tests:** `cd test && make run`
+
+**Generate docs:** `doxygen Doxyfile`
 
 
 ### Features
@@ -25,14 +28,6 @@ To run the tests: `cd test`, then `make run`.
 - Higher order macros (`vector_first_index_where`, `vector_remove_where`, ...)
 
 
-### Todo
-
-- [x] Documentation
-- [x] Tests
-- [x] Sorting and reversing
-- [ ] Better documentation (html? usage examples?)
-
-
 ### License
 
-`Vector(T)` is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
+`Vector(T)` is available under the MIT license. See the [LICENSE](./LICENSE) file for more info.

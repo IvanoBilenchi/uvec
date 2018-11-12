@@ -125,3 +125,6 @@ $RECYCLE.BIN/
 
 
 # End of https://www.gitignore.io/api/c,linux,macos,windows
+
+# Project-specific
+/docs
