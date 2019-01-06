@@ -339,7 +339,7 @@
     __VECTOR_IMPL(T, __vector_unused)
 
 /**
- * Implements a new equatable vector type,
+ * Implements a previously declared equatable vector type,
  * e.g. a vector whose elements can be compared via __equal_func.
  *
  * @param T Vector type.
@@ -350,7 +350,7 @@
     __VECTOR_IMPL_EQUATABLE(T, __vector_unused, __equal_func, 0)
 
 /**
- * Implements a new equatable vector type whose elements can be compared via ==.
+ * Implements previously declared equatable vector type whose elements can be compared via ==.
  *
  * @param T Vector type.
  */
