@@ -1,10 +1,6 @@
 /** @file
  * Vector(T) - a type-safe, generic C vector.
  *
- * If you despise macros, I've got bad news for you ;)
- * Inspired by klib ( https://github.com/attractivechaos/klib )
- * MIT licensed.
- *
  * @see test.c for usage examples.
  * @author Ivano Bilenchi
  */
@@ -21,6 +17,12 @@
 
 /// Index returned by find-like functions when a matching element cannot be found.
 #define VECTOR_INDEX_NOT_FOUND UINT32_MAX
+
+/// Cache line size (B).
+#define __VECTOR_CACHE_LINE_SIZE 64
+
+/// Quicksort stack size.
+#define __VECTOR_SORT_STACK_SIZE 64
 
 #pragma mark - Private API and Implementation
 /// @name Private
@@ -46,6 +48,9 @@
         #define __vector_unused
     #endif
 #endif /* __vector_unused */
+
+/// Specifier for static inline definitions.
+#define __vector_static_inline static __vector_inline __vector_unused
 
 /**
  * Rounds x to the next power of 2.
@@ -73,9 +78,18 @@
  *
  * @param a LHS of the identity.
  * @param b RHS of the identity.
- * @return True if a and b are identical, false otherwise.
+ * @return a == b
  */
 #define __vector_identical(a, b) ((a) == (b))
+
+/**
+ * "Less than" comparison macro.
+ *
+ * @param a LHS of the comparison.
+ * @param b RHS of the comparison.
+ * @return a < b
+ */
+#define __vector_less_than(a, b) ((a) < (b))
 
 /**
  * Defines a new vector struct.
@@ -119,6 +133,23 @@
     SCOPE bool vector_equals_##T(Vector_##T *vector, Vector_##T *other);                            \
     SCOPE bool vector_contains_all_##T(Vector_##T *vector, Vector_##T *other);                      \
     SCOPE bool vector_contains_any_##T(Vector_##T *vector, Vector_##T *other);
+
+/**
+ * Generates function declarations for the specified comparable vector type.
+ *
+ * @param T Vector type.
+ * @param SCOPE Scope of the declarations.
+ */
+#define __VECTOR_DECL_COMPARABLE(T, SCOPE)                                                          \
+    SCOPE uint32_t vector_index_of_min_##T(Vector_##T const *vec);                                  \
+    SCOPE uint32_t vector_index_of_max_##T(Vector_##T const *vec);                                  \
+    SCOPE void vector_sort_##T(Vector_##T *vec);                                                    \
+    SCOPE uint32_t vector_insertion_index_sorted_##T(Vector_##T const *vec, T item);                \
+    SCOPE uint32_t vector_index_of_sorted_##T(Vector_##T const *vec, T item);                       \
+    SCOPE uint32_t vector_insert_sorted_##T(Vector_##T *vec, T item);                               \
+    SCOPE uint32_t vector_insertion_index_sorted_unique_##T(Vector_##T const *vec, T item);         \
+    SCOPE uint32_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item);
+
 
 /**
  * Generates function definitions for the specified vector type.
@@ -306,6 +337,123 @@
         return false;                                                                               \
     }
 
+/**
+ * Generates function definitions for the specified comparable vector type.
+ *
+ * @param T Vector type.
+ * @param SCOPE Scope of the definitions.
+ * @param __equal_func Equality function: (T, T) -> bool
+ * @param __compare_func Comparison function: (T, T) -> bool
+ */
+#define __VECTOR_IMPL_COMPARABLE(T, SCOPE, __equal_func, __compare_func)                            \
+                                                                                                    \
+    SCOPE uint32_t vector_index_of_min_##T(Vector_##T const *vec) {                                 \
+        if (!vec->count) return VECTOR_INDEX_NOT_FOUND;                                             \
+                                                                                                    \
+        uint32_t min_idx = 0;                                                                       \
+                                                                                                    \
+        for (uint32_t i = 1; i < vec->count; ++i) {                                                 \
+            if (__compare_func(vec->storage[i], vec->storage[min_idx])) {                           \
+                min_idx = i;                                                                        \
+            }                                                                                       \
+        }                                                                                           \
+                                                                                                    \
+        return min_idx;                                                                             \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE uint32_t vector_index_of_max_##T(Vector_##T const *vec) {                                 \
+        if (!vec->count) return VECTOR_INDEX_NOT_FOUND;                                             \
+                                                                                                    \
+        uint32_t max_idx = 0;                                                                       \
+                                                                                                    \
+        for (uint32_t i = 1; i < vec->count; ++i) {                                                 \
+            if (__compare_func(vec->storage[max_idx], vec->storage[i])) {                           \
+                max_idx = i;                                                                        \
+            }                                                                                       \
+        }                                                                                           \
+                                                                                                    \
+        return max_idx;                                                                             \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE void vector_sort_##T(Vector_##T *vec) {                                                   \
+        T *array = vec->storage;                                                                    \
+        uint32_t len = vec->count, left = 0, pos = 0, seed = rand();                                \
+        uint32_t stack[__VECTOR_SORT_STACK_SIZE];                                                   \
+                                                                                                    \
+        while (true) {                                                                              \
+            for (; left + 1 < len; ++len) {                                                         \
+                if (pos == __VECTOR_SORT_STACK_SIZE) len = stack[pos = 0];                          \
+                                                                                                    \
+                T pivot = array[left + seed % (len - left)];                                        \
+                seed = seed * 69069 + 1;                                                            \
+                stack[pos++] = len;                                                                 \
+                                                                                                    \
+                for (uint32_t right = left - 1;;) {                                                 \
+                    for (++right; __compare_func(array[right], pivot); ++right);                    \
+                    for (--len; __compare_func(pivot, array[len]); --len);                          \
+                    if (right >= len) break;                                                        \
+                                                                                                    \
+                    T temp = array[right];                                                          \
+                    array[right] = array[len];                                                      \
+                    array[len] = temp;                                                              \
+                }                                                                                   \
+            }                                                                                       \
+                                                                                                    \
+            if (pos == 0) break;                                                                    \
+            left = len;                                                                             \
+            len = stack[--pos];                                                                     \
+        }                                                                                           \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE uint32_t vector_insertion_index_sorted_##T(Vector_##T const *vec, T item) {               \
+        T const *array = vec->storage;                                                              \
+        uint32_t const linear_search_thresh = __VECTOR_CACHE_LINE_SIZE / sizeof(T);                 \
+        int64_t r = (int64_t)vec->count - 1;                                                        \
+        uint32_t l = 0;                                                                             \
+                                                                                                    \
+        while (r - l > linear_search_thresh) {                                                      \
+            int64_t m = l + (r - l) / 2;                                                            \
+            T middle = array[m];                                                                    \
+                                                                                                    \
+            if (__equal_func(middle, item))                                                         \
+                return m;                                                                           \
+                                                                                                    \
+            if (__compare_func(middle, item))                                                       \
+                l = m + 1;                                                                          \
+            else                                                                                    \
+                r = m - 1;                                                                          \
+        }                                                                                           \
+                                                                                                    \
+        for (; l <= r; ++l) {                                                                       \
+            T current = array[l];                                                                   \
+            if (!__compare_func(current, item)) return l;                                           \
+        }                                                                                           \
+                                                                                                    \
+        return l;                                                                                   \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE uint32_t vector_index_of_sorted_##T(Vector_##T const *vec, T item) {                      \
+        uint32_t idx = vector_insertion_index_sorted_##T(vec, item);                                \
+        return __equal_func(vec->storage[idx], item) ? idx : VECTOR_INDEX_NOT_FOUND;                \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE uint32_t vector_insert_sorted_##T(Vector_##T *vec, T item) {                              \
+        uint32_t idx = vector_insertion_index_sorted_##T(vec, item);                                \
+        vector_insert_at_##T(vec, idx, item);                                                       \
+        return idx;                                                                                 \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE uint32_t vector_insertion_index_sorted_unique_##T(Vector_##T const *vec, T item) {        \
+        uint32_t idx = vector_insertion_index_sorted_##T(vec, item);                                \
+        return __equal_func(vec->storage[idx], item) ? VECTOR_INDEX_NOT_FOUND : idx;                \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE uint32_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item) {                       \
+        uint32_t idx = vector_insertion_index_sorted_unique_##T(vec, item);                         \
+        if (idx != VECTOR_INDEX_NOT_FOUND) vector_insert_at_##T(vec, idx, item);                    \
+        return idx;                                                                                 \
+    }
+
 #pragma mark - Public API
 
 /// @name Type definitions
@@ -331,6 +479,17 @@
     __VECTOR_DECL_EQUATABLE(T, __vector_unused)
 
 /**
+ * Declares a new comparable vector type.
+ *
+ * @param T Vector type.
+ */
+#define VECTOR_DECL_COMPARABLE(T)                                                                   \
+    __VECTOR_DEF_TYPE(T)                                                                            \
+    __VECTOR_DECL(T, __vector_unused)                                                               \
+    __VECTOR_DECL_EQUATABLE(T, __vector_unused)                                                     \
+    __VECTOR_DECL_COMPARABLE(T, __vector_unused)
+
+/**
  * Implements a previously declared vector type.
  *
  * @param T Vector type.
@@ -339,8 +498,8 @@
     __VECTOR_IMPL(T, __vector_unused)
 
 /**
- * Implements a previously declared equatable vector type,
- * e.g. a vector whose elements can be compared via __equal_func.
+ * Implements a previously declared equatable vector type.
+ * Elements of an equatable vector can be checked for equality via __equal_func.
  *
  * @param T Vector type.
  * @param __equal_func Equality function: (T, T) -> bool
@@ -350,13 +509,29 @@
     __VECTOR_IMPL_EQUATABLE(T, __vector_unused, __equal_func, 0)
 
 /**
- * Implements previously declared equatable vector type whose elements can be compared via ==.
+ * Implements a previously declared comparable vector type.
+ * Elements of a comparable vector can be checked for equality via __equal_func
+ * and ordered via __compare_func.
+ *
+ * @param T Vector type.
+ * @param __equal_func Equality function: (T, T) -> bool
+ * @param __compare_func Comparison function: (T, T) -> bool (True if LHS is smaller than RHS)
+ */
+#define VECTOR_IMPL_COMPARABLE(T, __equal_func, __compare_func)                                     \
+    __VECTOR_IMPL(T, __vector_unused)                                                               \
+    __VECTOR_IMPL_EQUATABLE(T, __vector_unused, __equal_func, 0)                                    \
+    __VECTOR_IMPL_COMPARABLE(T, __vector_unused, __equal_func, __compare_func)
+
+/**
+ * Implements a previously declared comparable vector type
+ * whose elements can be checked for equality via == and compared via <.
  *
  * @param T Vector type.
  */
 #define VECTOR_IMPL_IDENTIFIABLE(T)                                                                 \
     __VECTOR_IMPL(T, __vector_unused)                                                               \
-    __VECTOR_IMPL_EQUATABLE(T, __vector_unused, __vector_identical, 1)
+    __VECTOR_IMPL_EQUATABLE(T, __vector_unused, __vector_identical, 1)                              \
+    __VECTOR_IMPL_COMPARABLE(T, __vector_unused, __vector_identical, __vector_less_than)
 
 /**
  * Defines a new static vector type.
@@ -365,29 +540,43 @@
  */
 #define VECTOR_INIT(T)                                                                              \
     __VECTOR_DEF_TYPE(T)                                                                            \
-    __VECTOR_IMPL(T, static __vector_inline __vector_unused)
+    __VECTOR_IMPL(T, __vector_static_inline)
 
 /**
- * Defines a new static equatable vector type,
- * e.g. a vector whose elements can be compared via __equal_func.
+ * Defines a new static equatable vector type.
  *
  * @param T Vector type.
  * @param __equal_func Equality function: (T, T) -> bool
  */
 #define VECTOR_INIT_EQUATABLE(T, __equal_func)                                                      \
     __VECTOR_DEF_TYPE(T)                                                                            \
-    __VECTOR_IMPL(T, static __vector_inline __vector_unused)                                        \
-    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __equal_func, 0)
+    __VECTOR_IMPL(T, __vector_static_inline)                                                        \
+    __VECTOR_IMPL_EQUATABLE(T, __vector_static_inline, __equal_func, 0)
 
 /**
- * Defines a new static equatable vector type whose elements can be compared via ==.
+ * Defines a new static comparable vector type.
+ *
+ * @param T Vector type.
+ * @param __equal_func Equality function: (T, T) -> bool
+ * @param __compare_func Comparison function: (T, T) -> bool (True if LHS is smaller than RHS)
+ */
+#define VECTOR_INIT_COMPARABLE(T, __equal_func, __compare_func)                                     \
+    __VECTOR_DEF_TYPE(T)                                                                            \
+    __VECTOR_IMPL(T, __vector_static_inline)                                                        \
+    __VECTOR_IMPL_EQUATABLE(T, __vector_static_inline, __equal_func, 0)                             \
+    __VECTOR_IMPL_COMPARABLE(T, __vector_static_inline, __equal_func, __compare_func)
+
+/**
+ * Defines a new static equatable vector type
+ * whose elements can be checked for equality via == and compared via <.
  *
  * @param T Vector type.
  */
 #define VECTOR_INIT_IDENTIFIABLE(T)                                                                 \
     __VECTOR_DEF_TYPE(T)                                                                            \
-    __VECTOR_IMPL(T, static __vector_inline __vector_unused)                                        \
-    __VECTOR_IMPL_EQUATABLE(T, static __vector_inline __vector_unused, __vector_identical, 1)
+    __VECTOR_IMPL(T, __vector_static_inline)                                                        \
+    __VECTOR_IMPL_EQUATABLE(T, __vector_static_inline, __vector_identical, 1)                       \
+    __VECTOR_IMPL_COMPARABLE(T, __vector_static_inline, __vector_identical, __vector_less_than)
 
 /// @name Declaration
 #pragma mark - Declaration
@@ -733,8 +922,8 @@
 #define vector_foreach_reverse(T, vec, item_name, code) \
     vector_iterate_reverse(T, vec, item_name, __i_##item_name, code)
 
-/// @name Equatable-specific
-#pragma mark - Equatable-specific
+/// @name Equatable
+#pragma mark - Equatable
 
 /**
  * Returns the index of the first occurrence of the specified element.
@@ -801,8 +990,8 @@
 #define vector_remove(T, vec, item) __MACRO_CONCAT(vector_remove_, T)(vec, item)
 
 /**
- * Checks whether the two vectors are equal
- * (e.g. they contain the same elements in the same order).
+ * Checks whether the two vectors are equal.
+ * Two vectors are considered equal if they contain the same elements in the same order.
  *
  * @param T Vector type.
  * @param vec_a First vector.
@@ -864,6 +1053,135 @@
  */
 #define vector_append_unique_lazy(T, vec, vec_to_append) \
     do { vector_ensure(T, vec); vector_append_unique(T, vec, vec_to_append); } while(0)
+
+/// @name Comparable
+#pragma mark - Comparable
+
+/**
+ * Returns the index of the minimum element in the vector.
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @return Index of the minimum element.
+ */
+#define vector_index_of_min(T, vec) __MACRO_CONCAT(vector_index_of_min_, T)(vec)
+
+/**
+ * Returns the index of the maximum element in the vector.
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @return Index of the maximum element.
+ */
+#define vector_index_of_max(T, vec) __MACRO_CONCAT(vector_index_of_max_, T)(vec)
+
+/**
+ * Sorts the vector.
+ * Average performance: O(n log n)
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ */
+#define vector_sort(T, vec) __MACRO_CONCAT(vector_sort_, T)(vec)
+
+/**
+ * Finds the insertion index for the specified item in a sorted vector.
+ * Average performance: O(log n)
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @param item Element whose insertion index should be found.
+ * @return Insertion index.
+ */
+#define vector_insertion_index_sorted(T, vec, item) \
+    __MACRO_CONCAT(vector_insertion_index_sorted_, T)(vec, item)
+
+/**
+ * Returns the index of the specified element in a sorted vector.
+ * Average performance: O(log n)
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @param item Element to search.
+ * @return Index of the found element, or VECTOR_INDEX_NOT_FOUND.
+ *
+ * @note The returned index is not necessarily the first occurrence of the item.
+ */
+#define vector_index_of_sorted(T, vec, item) \
+    __MACRO_CONCAT(vector_index_of_sorted_, T)(vec, item)
+
+/**
+ * Checks whether a sorted vector contains the specified element.
+ * Average performance: O(log n)
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @param item Element to search.
+ * @return True if the vector contains the specified element, false otherwise.
+ */
+#define vector_contains_sorted(T, vec, item) \
+    (__MACRO_CONCAT(vector_index_of_sorted_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
+
+/**
+ * Inserts an element in a sorted vector.
+ * Average performance: O(log n)
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @param item Element to insert.
+ * @return Index of the inserted element.
+ */
+#define vector_insert_sorted(T, vec, item) \
+    __MACRO_CONCAT(vector_insert_sorted_, T)(vec, item)
+
+/**
+ * Inserts all the elements present in a vector into another sorted vector.
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @param source Vector containing the elements to insert.
+ */
+#define vector_insert_all_sorted(T, vec, source)                                                    \
+    vector_foreach(T, source, __item, {                                                             \
+        __MACRO_CONCAT(vector_insert_sorted_, T)(vec, __item);                                      \
+    })
+
+/**
+ * Finds the insertion index for the specified item in a sorted vector if it is not already present.
+ * Average performance: O(log n)
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @param item Element whose insertion index should be found.
+ * @return Insertion index, or VECTOR_INDEX_NOT_FOUND if the element is already present.
+ */
+#define vector_insertion_index_sorted_unique(T, vec, item) \
+    __MACRO_CONCAT(vector_insertion_index_sorted_unique_, T)(vec, item)
+
+/**
+ * Inserts an element in a sorted vector if it is not already present.
+ * Average performance: O(log n)
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @param item Element to insert.
+ * @return Index of the inserted element, or VECTOR_INDEX_NOT_FOUND if it is already present.
+ */
+#define vector_insert_sorted_unique(T, vec, item) \
+    __MACRO_CONCAT(vector_insert_sorted_unique_, T)(vec, item)
+
+/**
+ * Inserts all the elements present in a vector into another sorted vector
+ * if they are not already present.
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @param source Vector containing the elements to insert.
+ */
+#define vector_insert_all_sorted_unique(T, vec, source)                                             \
+    vector_foreach(T, source, __item, {                                                             \
+        __MACRO_CONCAT(vector_insert_sorted_unique_, T)(vec, __item);                               \
+    })
 
 /// @name Deep manipulation
 #pragma mark - Deep manipulation
@@ -1027,7 +1345,7 @@
     })
 
 /**
- * Sorts the vector.
+ * Sorts the vector via qsort.
  *
  * @param T Vector type.
  * @param vec Vector instance.
@@ -1035,11 +1353,11 @@
  *
  * @see qsort
  */
-#define vector_sort(T, vec, __comp_func) \
-    vector_sort_range(T, vec, 0, (vec)->count, __comp_func)
+#define vector_qsort(T, vec, __comp_func) \
+    vector_qsort_range(T, vec, 0, (vec)->count, __comp_func)
 
 /**
- * Sorts the elements in the specified range.
+ * Sorts the elements in the specified range via qsort.
  *
  * @param T Vector type.
  * @param vec Vector instance.
@@ -1049,7 +1367,7 @@
  *
  * @see qsort
  */
-#define vector_sort_range(T, vec, start, len, __comp_func) \
+#define vector_qsort_range(T, vec, start, len, __comp_func) \
     if (vec) qsort((vec)->storage + start, len, sizeof(T), __comp_func)
 
 #endif // VECTOR_H

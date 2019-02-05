@@ -27,7 +27,7 @@ static int int_comparator(const void * a, const void * b) {
 
 #pragma mark - Tests
 
-static void test_base() {
+static void test_base(void) {
     Vector(int) *v = vector_alloc(int);
     assert(vector_is_empty(v));
 
@@ -60,7 +60,7 @@ static void test_base() {
     vector_free(int, v);
 }
 
-static void test_capacity() {
+static void test_capacity(void) {
     Vector(int) *v = vector_alloc(int);
     uint32_t const capacity = 5;
     uint32_t const expand = 3;
@@ -83,7 +83,7 @@ static void test_capacity() {
     vector_free(int, v);
 }
 
-static void test_equality() {
+static void test_equality(void) {
     Vector(int) *v1 = vector_alloc(int);
     vector_append_items(int, v1, 3, 2, 4, 1);
 
@@ -100,7 +100,7 @@ static void test_equality() {
     vector_free(int, v2);
 }
 
-static void test_contains() {
+static void test_contains(void) {
     Vector(int) *v1 = vector_alloc(int);
     vector_append_items(int, v1, 3, 2, 5, 4, 5, 1);
 
@@ -130,7 +130,7 @@ static void test_contains() {
     vector_free(int, v2);
 }
 
-static void test_unique() {
+static void test_unique(void) {
     Vector(int) *v1 = vector_alloc(int);
     vector_append_items(int, v1, 3, 2, 4, 1);
 
@@ -150,11 +150,11 @@ static void test_unique() {
     vector_free(int, v2);
 }
 
-static void test_sort_reverse() {
+static void test_qsort_reverse(void) {
     Vector(int) *v = vector_alloc(int);
     vector_append_items(int, v, 3, 2, 4, 1);
 
-    vector_sort(int, v, int_comparator);
+    vector_qsort(int, v, int_comparator);
     assert_vector_elements(int, v, 1, 2, 3, 4);
 
     vector_reverse(int, v);
@@ -163,7 +163,7 @@ static void test_sort_reverse() {
     vector_free(int, v);
 }
 
-static void test_higher_order() {
+static void test_higher_order(void) {
     Vector(int) *v = vector_alloc(int);
     vector_append_items(int, v, 3, 2, 4, 1);
 
@@ -190,6 +190,36 @@ static void test_higher_order() {
     vector_free(int, v);
 }
 
+static void test_comparable(void) {
+    Vector(int) *v = vector_alloc(int);
+
+    Vector(int) *values = vector_alloc(int);
+    vector_append_items(int, values, 3, 2, 2, 2, 4, 1, 5, 5, 6);
+
+    vector_append(int, v, values);
+    assert(vector_index_of_min(int, v) == 5);
+    assert(vector_index_of_max(int, v) == 8);
+
+    vector_sort(int, v);
+    assert_vector_elements(int, v, 1, 2, 2, 2, 3, 4, 5, 5, 6);
+
+    vector_remove_all(int, v);
+    vector_insert_all_sorted(int, v, values);
+    assert_vector_elements(int, v, 1, 2, 2, 2, 3, 4, 5, 5, 6);
+
+    assert(vector_contains_sorted(int, v, 6));
+    assert(!vector_contains_sorted(int, v, -1));
+    assert(vector_index_of_sorted(int, v, 3) == 4);
+    assert(vector_index_of_sorted(int, v, 7) == VECTOR_INDEX_NOT_FOUND);
+
+    vector_remove_all(int, v);
+    vector_insert_all_sorted_unique(int, v, values);
+    assert_vector_elements(int, v, 1, 2, 3, 4, 5, 6);
+
+    vector_free(int, v);
+    vector_free(int, values);
+}
+
 #pragma mark - Main
 
 int main(void) {
@@ -198,7 +228,9 @@ int main(void) {
     test_equality();
     test_contains();
     test_unique();
-    test_sort_reverse();
+    test_comparable();
+    test_qsort_reverse();
     test_higher_order();
     printf("All tests passed.\n");
+    return 0;
 }

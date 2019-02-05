@@ -25,6 +25,7 @@ Documentation for the project is provided in form of docstrings in the *Public A
 - Vector primitives (`vector_get`, `vector_set`, `vector_push`, `vector_pop`, `vector_append`, ...)
 - Iteration macros (`vector_iterate`, `vector_foreach`, ...)
 - Support for element equality and related features (`vector_contains`, `vector_index_of`, ...)
+- Support for element comparison and related features (`vector_max`, `vector_min`, `vector_sort`, ...)
 - Higher order macros (`vector_first_index_where`, `vector_remove_where`, ...)
 
 
