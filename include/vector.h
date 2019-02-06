@@ -143,7 +143,7 @@
 #define __VECTOR_DECL_COMPARABLE(T, SCOPE)                                                          \
     SCOPE uint32_t vector_index_of_min_##T(Vector_##T const *vec);                                  \
     SCOPE uint32_t vector_index_of_max_##T(Vector_##T const *vec);                                  \
-    SCOPE void vector_sort_##T(Vector_##T *vec);                                                    \
+    SCOPE void vector_sort_range_##T(Vector_##T *vec, uint32_t start, uint32_t len);                \
     SCOPE uint32_t vector_insertion_index_sorted_##T(Vector_##T const *vec, T item);                \
     SCOPE uint32_t vector_index_of_sorted_##T(Vector_##T const *vec, T item);                       \
     SCOPE uint32_t vector_insert_sorted_##T(Vector_##T *vec, T item);                               \
@@ -375,20 +375,19 @@
         return max_idx;                                                                             \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_sort_##T(Vector_##T *vec) {                                                   \
+    SCOPE void vector_sort_range_##T(Vector_##T *vec, uint32_t start, uint32_t len) {               \
         T *array = vec->storage;                                                                    \
-        uint32_t len = vec->count, left = 0, pos = 0, seed = rand();                                \
-        uint32_t stack[__VECTOR_SORT_STACK_SIZE];                                                   \
+        uint32_t pos = 0, seed = 31, stack[__VECTOR_SORT_STACK_SIZE];                               \
                                                                                                     \
         while (true) {                                                                              \
-            for (; left + 1 < len; ++len) {                                                         \
+            for (; start + 1 < len; ++len) {                                                        \
                 if (pos == __VECTOR_SORT_STACK_SIZE) len = stack[pos = 0];                          \
                                                                                                     \
-                T pivot = array[left + seed % (len - left)];                                        \
+                T pivot = array[start + seed % (len - start)];                                      \
                 seed = seed * 69069 + 1;                                                            \
                 stack[pos++] = len;                                                                 \
                                                                                                     \
-                for (uint32_t right = left - 1;;) {                                                 \
+                for (uint32_t right = start - 1;;) {                                                \
                     for (++right; __compare_func(array[right], pivot); ++right);                    \
                     for (--len; __compare_func(pivot, array[len]); --len);                          \
                     if (right >= len) break;                                                        \
@@ -400,7 +399,7 @@
             }                                                                                       \
                                                                                                     \
             if (pos == 0) break;                                                                    \
-            left = len;                                                                             \
+            start = len;                                                                            \
             len = stack[--pos];                                                                     \
         }                                                                                           \
     }                                                                                               \
@@ -1073,7 +1072,19 @@
  * @param T Vector type.
  * @param vec Vector instance.
  */
-#define vector_sort(T, vec) __MACRO_CONCAT(vector_sort_, T)(vec)
+#define vector_sort(T, vec) __MACRO_CONCAT(vector_sort_range_, T)(vec, 0, (vec)->count)
+
+/**
+ * Sorts the elements in the specified range.
+ * Average performance: O(n log n)
+ *
+ * @param T Vector type.
+ * @param vec Vector instance.
+ * @param start Range start index.
+ * @param len Range length.
+ */
+#define vector_sort_range(T, vec, start, len) \
+    __MACRO_CONCAT(vector_sort_range_, T)(vec, start, len)
 
 /**
  * Finds the insertion index for the specified item in a sorted vector.
