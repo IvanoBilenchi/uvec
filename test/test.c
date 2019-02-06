@@ -193,6 +193,10 @@ static void test_higher_order(void) {
 static void test_comparable(void) {
     Vector(int) *v = vector_alloc(int);
 
+    vector_insert_sorted(int, v, 0);
+    assert_vector_elements(int, v, 0);
+    vector_remove_all(int, v);
+
     Vector(int) *values = vector_alloc(int);
     vector_append_items(int, values, 3, 2, 2, 2, 4, 1, 5, 5, 6);
 

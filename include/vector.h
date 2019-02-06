@@ -433,25 +433,25 @@
     }                                                                                               \
                                                                                                     \
     SCOPE uint32_t vector_index_of_sorted_##T(Vector_##T const *vec, T item) {                      \
-        uint32_t idx = vector_insertion_index_sorted_##T(vec, item);                                \
-        return __equal_func(vec->storage[idx], item) ? idx : VECTOR_INDEX_NOT_FOUND;                \
+        uint32_t const i = vector_insertion_index_sorted_##T(vec, item);                            \
+        return vec->storage && __equal_func(vec->storage[i], item) ? i : VECTOR_INDEX_NOT_FOUND;    \
     }                                                                                               \
                                                                                                     \
     SCOPE uint32_t vector_insert_sorted_##T(Vector_##T *vec, T item) {                              \
-        uint32_t idx = vector_insertion_index_sorted_##T(vec, item);                                \
-        vector_insert_at_##T(vec, idx, item);                                                       \
-        return idx;                                                                                 \
+        uint32_t const i = vector_insertion_index_sorted_##T(vec, item);                            \
+        vector_insert_at_##T(vec, i, item);                                                         \
+        return i;                                                                                   \
     }                                                                                               \
                                                                                                     \
     SCOPE uint32_t vector_insertion_index_sorted_unique_##T(Vector_##T const *vec, T item) {        \
-        uint32_t idx = vector_insertion_index_sorted_##T(vec, item);                                \
-        return __equal_func(vec->storage[idx], item) ? VECTOR_INDEX_NOT_FOUND : idx;                \
+        uint32_t const i = vector_insertion_index_sorted_##T(vec, item);                            \
+        return vec->storage && __equal_func(vec->storage[i], item) ? VECTOR_INDEX_NOT_FOUND : i;    \
     }                                                                                               \
                                                                                                     \
     SCOPE uint32_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item) {                       \
-        uint32_t idx = vector_insertion_index_sorted_unique_##T(vec, item);                         \
-        if (idx != VECTOR_INDEX_NOT_FOUND) vector_insert_at_##T(vec, idx, item);                    \
-        return idx;                                                                                 \
+        uint32_t const i = vector_insertion_index_sorted_unique_##T(vec, item);                     \
+        if (i != VECTOR_INDEX_NOT_FOUND) vector_insert_at_##T(vec, i, item);                        \
+        return i;                                                                                   \
     }
 
 #pragma mark - Public API
