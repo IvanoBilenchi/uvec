@@ -406,19 +406,19 @@
                                                                                                     \
     SCOPE uint32_t vector_insertion_index_sorted_##T(Vector_##T const *vec, T item) {               \
         T const *array = vec->storage;                                                              \
-        uint32_t const linear_search_thresh = __VECTOR_CACHE_LINE_SIZE / sizeof(T);             	\
+        uint32_t const linear_search_thresh = __VECTOR_CACHE_LINE_SIZE / sizeof(T);                 \
         uint32_t r = vec->count, l = 0;                                                             \
                                                                                                     \
-        while (r - l > linear_search_thresh) {                                                 		\
-            uint32_t m = l + (r - l) / 2;                                                       	\
+        while (r - l > linear_search_thresh) {                                                      \
+            uint32_t m = l + (r - l) / 2;                                                           \
                                                                                                     \
             if (__compare_func(array[m], item))                                                     \
-                l = m + 1;                                                                         	\
+                l = m + 1;                                                                          \
             else                                                                                    \
-                r = m;                                                                          	\
+                r = m;                                                                              \
         }                                                                                           \
                                                                                                     \
-		for (; l < r && __compare_func(array[l], item); ++l);										\
+        for (; l < r && __compare_func(array[l], item); ++l);                                       \
         return l;                                                                                   \
     }                                                                                               \
                                                                                                     \
