@@ -198,14 +198,19 @@ static void test_comparable(void) {
     vector_remove_all(int, v);
 
     Vector(int) *values = vector_alloc(int);
-    vector_append_items(int, values, 3, 2, 2, 2, 4, 1, 5, 5, 6);
+    vector_append_items(int, values, 3, 2, 2, 2, 4, 1, 5, 6, 5);
 
     vector_append(int, v, values);
     assert(vector_index_of_min(int, v) == 5);
-    assert(vector_index_of_max(int, v) == 8);
+    assert(vector_index_of_max(int, v) == 7);
 
     vector_sort(int, v);
     assert_vector_elements(int, v, 1, 2, 2, 2, 3, 4, 5, 5, 6);
+
+    vector_remove_all(int, v);
+    vector_append(int, v, values);
+    vector_sort_range(int, v, 3, 3);
+    assert_vector_elements(int, v, 3, 2, 2, 1, 2, 4, 5, 6, 5);
 
     vector_remove_all(int, v);
     vector_insert_all_sorted(int, v, values);

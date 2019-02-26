@@ -376,7 +376,8 @@
     }                                                                                               \
                                                                                                     \
     SCOPE void vector_sort_range_##T(Vector_##T *vec, uint32_t start, uint32_t len) {               \
-        T *array = vec->storage;                                                                    \
+        T *array = vec->storage + start;                                                            \
+        start = 0;                                                                                  \
         uint32_t pos = 0, seed = 31, stack[__VECTOR_SORT_STACK_SIZE];                               \
                                                                                                     \
         while (true) {                                                                              \
