@@ -52,6 +52,13 @@
 /// Specifier for static inline definitions.
 #define __vector_static_inline static __vector_inline __vector_unused
 
+/// Give hints to the static analyzer.
+#if (__clang_analyzer__)
+    #define __vector_analyzer_assert(c) do { if (!(c)) exit(1); } while(0)
+#else
+    #define __vector_analyzer_assert(c)
+#endif
+
 /**
  * Rounds x to the next power of 2.
  *
@@ -389,6 +396,7 @@
                 stack[pos++] = len;                                                                 \
                                                                                                     \
                 for (uint32_t right = start - 1;;) {                                                \
+                    __vector_analyzer_assert(false);                                                \
                     for (++right; __compare_func(array[right], pivot); ++right);                    \
                     for (--len; __compare_func(pivot, array[len]); --len);                          \
                     if (right >= len) break;                                                        \
