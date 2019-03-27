@@ -12,7 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#pragma mark - Constants
 /// @name Constants
 
 /// Index returned by find-like functions when a matching element cannot be found.
@@ -24,8 +23,7 @@
 /// Quicksort stack size.
 #define __VECTOR_SORT_STACK_SIZE 64
 
-#pragma mark - Private API and Implementation
-/// @name Private
+/// @name Private API and Implementation
 
 /// Concatenates the 'a' and 'b' tokens, allowing 'a' and 'b' to be macro-expanded.
 #define __MACRO_CONCAT(a, b) __MACRO_CONCAT_INNER(a, b)
@@ -453,10 +451,9 @@
         return i;                                                                                   \
     }
 
-#pragma mark - Public API
+/// @name Public API
 
 /// @name Type definitions
-#pragma mark - Type definitions
 
 /**
  * Declares a new vector type.
@@ -578,7 +575,6 @@
     __VECTOR_IMPL_COMPARABLE(T, __vector_static_inline, __vector_identical, __vector_less_than)
 
 /// @name Declaration
-#pragma mark - Declaration
 
 /**
  * Declares a new vector variable.
@@ -595,7 +591,6 @@
 #define vector_struct(T) struct __MACRO_CONCAT(Vector_, T)
 
 /// @name Memory management
-#pragma mark - Memory management
 
 /**
  * Allocates a new vector.
@@ -684,7 +679,6 @@
 #define vector_shrink(T, vec) __MACRO_CONCAT(vector_shrink_, T)(vec)
 
 /// @name Primitives
-#pragma mark - Primitives
 
 /**
  * Retrieves the element at the specified index.
@@ -859,7 +853,6 @@
 #define vector_reverse(T, vec) __MACRO_CONCAT(vector_reverse_, T)(vec)
 
 /// @name Iteration
-#pragma mark - Iteration
 
 /**
  * Iterates over the vector, executing the specified code block for each element.
@@ -922,7 +915,6 @@
     vector_iterate_reverse(T, vec, item_name, __i_##item_name, code)
 
 /// @name Equatable
-#pragma mark - Equatable
 
 /**
  * Returns the index of the first occurrence of the specified element.
@@ -1054,7 +1046,6 @@
     do { vector_ensure(T, vec); vector_append_unique(T, vec, vec_to_append); } while(0)
 
 /// @name Comparable
-#pragma mark - Comparable
 
 /**
  * Returns the index of the minimum element in the vector.
@@ -1195,7 +1186,6 @@
     })
 
 /// @name Deep manipulation
-#pragma mark - Deep manipulation
 
 /**
  * Performs a "deep copy": a new vector is allocated and assigned to 'dest',
@@ -1264,7 +1254,6 @@
 } while(0)
 
 /// @name Higher order
-#pragma mark - Higher order
 
 /**
  * Returns the index of the first element that matches the specified boolean expression.

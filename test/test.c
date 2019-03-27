@@ -5,8 +5,6 @@
 
 #include "vector.h"
 
-#pragma mark - Declarations
-
 #define array_size(array) (sizeof(array) / sizeof(*array))
 
 #define assert_vector_elements(T, vec, ...) do {                                                    \
@@ -17,15 +15,11 @@
 
 VECTOR_INIT_IDENTIFIABLE(int);
 
-#pragma mark - Utilities
-
 static int int_comparator(const void * a, const void * b) {
     int va = *(const int*)a;
     int vb = *(const int*)b;
     return (va > vb) - (va < vb);
 }
-
-#pragma mark - Tests
 
 static void test_base(void) {
     Vector(int) *v = vector_alloc(int);
@@ -228,8 +222,6 @@ static void test_comparable(void) {
     vector_free(int, v);
     vector_free(int, values);
 }
-
-#pragma mark - Main
 
 int main(void) {
     test_base();
