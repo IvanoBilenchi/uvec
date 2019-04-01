@@ -863,14 +863,15 @@
  * @param idx_name Name of the index variable.
  * @param code Code block to execute.
  */
-#define vector_iterate(T, vec, item_name, idx_name, code)                                           \
+#define vector_iterate(T, vec, item_name, idx_name, code) do {                                      \
     if (vec) {                                                                                      \
         uint32_t __n_##idx_name = (vec)->count;                                                     \
         for (uint32_t idx_name = 0; idx_name != __n_##idx_name; ++idx_name) {                       \
             T item_name = vector_get((vec), (idx_name));                                            \
             code;                                                                                   \
         }                                                                                           \
-    }
+    }                                                                                               \
+} while(0)
 
 /**
  * Iterates over the vector in reverse order,
@@ -882,13 +883,14 @@
  * @param idx_name Name of the index variable.
  * @param code Code block to execute.
  */
-#define vector_iterate_reverse(T, vec, item_name, idx_name, code)                                   \
+#define vector_iterate_reverse(T, vec, item_name, idx_name, code) do {                              \
     if (vec) {                                                                                      \
         for (uint32_t idx_name = (vec)->count; idx_name-- != 0;) {                                  \
             T item_name = vector_get((vec), (idx_name));                                            \
             code;                                                                                   \
         }                                                                                           \
-    }
+    }                                                                                               \
+} while(0)
 
 /**
  * Iterates over the vector,
