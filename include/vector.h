@@ -12,10 +12,41 @@
 #include <stdlib.h>
 #include <string.h>
 
+/// @name Configuration
+
+#if defined VECTOR_TINY
+    #define vector_uint_t uint16_t
+    #define VECTOR_UINT_MAX UINT16_MAX
+
+    #define __vector_uint_next_power_2(x) (                                                         \
+        --(x),                                                                                      \
+        (x)|=(x)>>1u, (x)|=(x)>>2u, (x)|=(x)>>4u, (x)|=(x)>>8u,                                     \
+        ++(x)                                                                                       \
+    )
+#elif defined VECTOR_HUGE
+    #define vector_uint_t uint64_t
+    #define VECTOR_UINT_MAX UINT64_MAX
+
+    #define __vector_uint_next_power_2(x) (                                                         \
+        --(x),                                                                                      \
+        (x)|=(x)>>1u, (x)|=(x)>>2u, (x)|=(x)>>4u, (x)|=(x)>>8u, (x)|=(x)>>16u, (x)|=(x)>>32u,       \
+        ++(x)                                                                                       \
+    )
+#else
+    #define vector_uint_t uint32_t
+    #define VECTOR_UINT_MAX UINT32_MAX
+
+    #define __vector_uint_next_power_2(x) (                                                         \
+        --(x),                                                                                      \
+        (x)|=(x)>>1u, (x)|=(x)>>2u, (x)|=(x)>>4u, (x)|=(x)>>8u, (x)|=(x)>>16u,                      \
+        ++(x)                                                                                       \
+    )
+#endif
+
 /// @name Constants
 
 /// Index returned by find-like functions when a matching element cannot be found.
-#define VECTOR_INDEX_NOT_FOUND UINT32_MAX
+#define VECTOR_INDEX_NOT_FOUND VECTOR_UINT_MAX
 
 /// Cache line size (B).
 #define __VECTOR_CACHE_LINE_SIZE 64
@@ -58,14 +89,6 @@
 #endif
 
 /**
- * Rounds x to the next power of 2.
- *
- * @param x 32 bit integer to round.
- */
-#define __vector_int32_next_power_2(x) \
-    (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
-
-/**
  * Expands the vector if the allocated slots have all been filled up.
  *
  * @param T Vector type.
@@ -73,7 +96,7 @@
  */
 #define __vector_expand_if_required(T, vec) do {                                                    \
     if ((vec)->count == (vec)->allocated) {                                                         \
-        (vec)->allocated = (vec)->allocated ? (vec)->allocated<<1 : 2;                              \
+        (vec)->allocated = (vec)->allocated ? (vec)->allocated<<1u : 2;                              \
         (vec)->storage = realloc((vec)->storage, sizeof(T) * (vec)->allocated);                     \
     }                                                                                               \
 } while(0)
@@ -101,8 +124,12 @@
  *
  * @param T Vector type.
  */
-#define __VECTOR_DEF_TYPE(T) \
-    typedef struct Vector_##T { uint32_t count, allocated; T *storage; } Vector_##T;
+#define __VECTOR_DEF_TYPE(T)                                                                        \
+    typedef struct Vector_##T {                                                                     \
+        vector_uint_t count;                                                                        \
+        vector_uint_t allocated;                                                                    \
+        T *storage;                                                                                 \
+    } Vector_##T;
 
 /**
  * Generates function declarations for the specified vector type.
@@ -113,14 +140,14 @@
 #define __VECTOR_DECL(T, SCOPE)                                                                     \
     SCOPE Vector_##T* vector_alloc_##T(void);                                                       \
     SCOPE void vector_free_##T(Vector_##T *vector);                                                 \
-    SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, uint32_t capacity);                  \
-    SCOPE void vector_append_array_##T(Vector_##T *vector, T const *array, uint32_t n);             \
+    SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, vector_uint_t capacity);             \
+    SCOPE void vector_append_array_##T(Vector_##T *vector, T const *array, vector_uint_t n);        \
     SCOPE Vector_##T* vector_copy_##T(Vector_##T const *vector);                                    \
     SCOPE void vector_shrink_##T(Vector_##T *vector);                                               \
     SCOPE void vector_push_##T(Vector_##T *vector, T item);                                         \
     SCOPE T vector_pop_##T(Vector_##T *vector);                                                     \
-    SCOPE void vector_remove_at_##T(Vector_##T *vector, uint32_t idx);                              \
-    SCOPE void vector_insert_at_##T(Vector_##T *vector, uint32_t idx, T item);                      \
+    SCOPE void vector_remove_at_##T(Vector_##T *vector, vector_uint_t idx);                         \
+    SCOPE void vector_insert_at_##T(Vector_##T *vector, vector_uint_t idx, T item);                 \
     SCOPE void vector_remove_all_##T(Vector_##T *vector);                                           \
     SCOPE void vector_reverse_##T(Vector_##T *vector);
 
@@ -131,8 +158,8 @@
  * @param SCOPE Scope of the declarations.
  */
 #define __VECTOR_DECL_EQUATABLE(T, SCOPE)                                                           \
-    SCOPE uint32_t vector_index_of_##T(Vector_##T *vector, T item);                                 \
-    SCOPE uint32_t vector_index_of_reverse_##T(Vector_##T *vector, T item);                         \
+    SCOPE vector_uint_t vector_index_of_##T(Vector_##T *vector, T item);                            \
+    SCOPE vector_uint_t vector_index_of_reverse_##T(Vector_##T *vector, T item);                    \
     SCOPE bool vector_push_unique_##T(Vector_##T *vector, T item);                                  \
     SCOPE bool vector_remove_##T(Vector_##T *vector, T item);                                       \
     SCOPE bool vector_equals_##T(Vector_##T *vector, Vector_##T *other);                            \
@@ -146,15 +173,14 @@
  * @param SCOPE Scope of the declarations.
  */
 #define __VECTOR_DECL_COMPARABLE(T, SCOPE)                                                          \
-    SCOPE uint32_t vector_index_of_min_##T(Vector_##T const *vec);                                  \
-    SCOPE uint32_t vector_index_of_max_##T(Vector_##T const *vec);                                  \
-    SCOPE void vector_sort_range_##T(Vector_##T *vec, uint32_t start, uint32_t len);                \
-    SCOPE uint32_t vector_insertion_index_sorted_##T(Vector_##T const *vec, T item);                \
-    SCOPE uint32_t vector_index_of_sorted_##T(Vector_##T const *vec, T item);                       \
-    SCOPE uint32_t vector_insert_sorted_##T(Vector_##T *vec, T item);                               \
-    SCOPE uint32_t vector_insertion_index_sorted_unique_##T(Vector_##T const *vec, T item);         \
-    SCOPE uint32_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item);
-
+    SCOPE vector_uint_t vector_index_of_min_##T(Vector_##T const *vec);                             \
+    SCOPE vector_uint_t vector_index_of_max_##T(Vector_##T const *vec);                             \
+    SCOPE void vector_sort_range_##T(Vector_##T *vec, vector_uint_t start, vector_uint_t len);      \
+    SCOPE vector_uint_t vector_insertion_index_sorted_##T(Vector_##T const *vec, T item);           \
+    SCOPE vector_uint_t vector_index_of_sorted_##T(Vector_##T const *vec, T item);                  \
+    SCOPE vector_uint_t vector_insert_sorted_##T(Vector_##T *vec, T item);                          \
+    SCOPE vector_uint_t vector_insertion_index_sorted_unique_##T(Vector_##T const *vec, T item);    \
+    SCOPE vector_uint_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item);
 
 /**
  * Generates function definitions for the specified vector type.
@@ -174,19 +200,19 @@
         free(vector);                                                                               \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, uint32_t capacity) {                 \
+    SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, vector_uint_t capacity) {            \
         if (vector->allocated < capacity) {                                                         \
-            __vector_int32_next_power_2(capacity);                                                  \
+            __vector_uint_next_power_2(capacity);                                                  \
             vector->allocated = capacity;                                                           \
             vector->storage = realloc(vector->storage, sizeof(T) * capacity);                       \
         }                                                                                           \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_append_array_##T(Vector_##T *vector, T const *array, uint32_t n) {            \
+    SCOPE void vector_append_array_##T(Vector_##T *vector, T const *array, vector_uint_t n) {       \
         if (!(n && array)) return;                                                                  \
                                                                                                     \
-        uint32_t old_count = vector->count;                                                         \
-        uint32_t new_count = old_count + n;                                                         \
+        vector_uint_t old_count = vector->count;                                                    \
+        vector_uint_t new_count = old_count + n;                                                    \
                                                                                                     \
         vector->count = new_count;                                                                  \
         vector_reserve_capacity_##T(vector, new_count);                                             \
@@ -200,10 +226,10 @@
     }                                                                                               \
                                                                                                     \
     SCOPE void vector_shrink_##T(Vector_##T *vector) {                                              \
-        uint32_t new_allocated = vector->count;                                                     \
+        vector_uint_t new_allocated = vector->count;                                                \
                                                                                                     \
         if (new_allocated) {                                                                        \
-            __vector_int32_next_power_2(new_allocated);                                             \
+            __vector_uint_next_power_2(new_allocated);                                             \
                                                                                                     \
             if (new_allocated < vector->allocated) {                                                \
                 vector->allocated = new_allocated;                                                  \
@@ -224,8 +250,8 @@
         return vector->storage[--vector->count];                                                    \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_remove_at_##T(Vector_##T *vector, uint32_t idx) {                             \
-        uint32_t count = vector->count;                                                             \
+    SCOPE void vector_remove_at_##T(Vector_##T *vector, vector_uint_t idx) {                        \
+        vector_uint_t count = vector->count;                                                        \
                                                                                                     \
         if (idx < count - 1) {                                                                      \
             size_t block_size = (count - idx - 1) * sizeof(T);                                      \
@@ -235,7 +261,7 @@
         vector->count--;                                                                            \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_insert_at_##T(Vector_##T *vector, uint32_t idx, T item) {                     \
+    SCOPE void vector_insert_at_##T(Vector_##T *vector, vector_uint_t idx, T item) {                \
         __vector_expand_if_required(T, vector);                                                     \
                                                                                                     \
         if (idx < vector->count) {                                                                  \
@@ -252,12 +278,11 @@
     }                                                                                               \
                                                                                                     \
     SCOPE void vector_reverse_##T(Vector_##T *vector) {                                             \
-        uint32_t count = vector->count;                                                             \
+        vector_uint_t count = vector->count;                                                        \
                                                                                                     \
-        for (uint32_t i = 0; i < count / 2; ++i) {                                                  \
+        for (vector_uint_t i = 0; i < count / 2; ++i) {                                             \
             T temp = vector->storage[i];                                                            \
-            uint32_t swap_idx = count - i - 1;                                                      \
-                                                                                                    \
+            vector_uint_t swap_idx = count - i - 1;                                                 \
             vector->storage[i] = vector->storage[swap_idx];                                         \
             vector->storage[swap_idx] = temp;                                                       \
         }                                                                                           \
@@ -273,15 +298,15 @@
  */
 #define __VECTOR_IMPL_EQUATABLE(T, SCOPE, __equal_func, equal_func_is_identity)                     \
                                                                                                     \
-    SCOPE uint32_t vector_index_of_##T(Vector_##T *vector, T item) {                                \
-        for (uint32_t i = 0; i < vector->count; ++i) {                                              \
+    SCOPE vector_uint_t vector_index_of_##T(Vector_##T *vector, T item) {                           \
+        for (vector_uint_t i = 0; i < vector->count; ++i) {                                         \
             if (__equal_func(vector->storage[i], item)) return i;                                   \
         }                                                                                           \
         return VECTOR_INDEX_NOT_FOUND;                                                              \
     }                                                                                               \
                                                                                                     \
-    SCOPE uint32_t vector_index_of_reverse_##T(Vector_##T *vector, T item) {                        \
-        for (uint32_t i = vector->count; i-- != 0;) {                                               \
+    SCOPE vector_uint_t vector_index_of_reverse_##T(Vector_##T *vector, T item) {                   \
+        for (vector_uint_t i = vector->count; i-- != 0;) {                                          \
             if (__equal_func(vector->storage[i], item)) return i;                                   \
         }                                                                                           \
         return VECTOR_INDEX_NOT_FOUND;                                                              \
@@ -294,7 +319,7 @@
     }                                                                                               \
                                                                                                     \
     SCOPE bool vector_remove_##T(Vector_##T *vector, T item) {                                      \
-        uint32_t idx = vector_index_of_##T(vector, item);                                           \
+        vector_uint_t idx = vector_index_of_##T(vector, item);                                      \
                                                                                                     \
         if (idx != VECTOR_INDEX_NOT_FOUND) {                                                        \
             vector_remove_at_##T(vector, idx);                                                      \
@@ -312,7 +337,7 @@
         if (equal_func_is_identity)                                                                 \
             return memcmp(vector->storage, other->storage, vector->count * sizeof(T)) == 0;         \
                                                                                                     \
-        for (uint32_t i = 0; i < vector->count; ++i) {                                              \
+        for (vector_uint_t i = 0; i < vector->count; ++i) {                                         \
             if (!__equal_func(vector->storage[i], other->storage[i]))                               \
                 return false;                                                                       \
         }                                                                                           \
@@ -323,7 +348,7 @@
     SCOPE bool vector_contains_all_##T(Vector_##T *vector, Vector_##T *other) {                     \
         if (vector == other) return true;                                                           \
                                                                                                     \
-        for (uint32_t i = 0; i < other->count; ++i) {                                               \
+        for (vector_uint_t i = 0; i < other->count; ++i) {                                          \
             if (vector_index_of_##T(vector, other->storage[i]) == VECTOR_INDEX_NOT_FOUND)           \
                 return false;                                                                       \
         }                                                                                           \
@@ -334,7 +359,7 @@
     SCOPE bool vector_contains_any_##T(Vector_##T *vector, Vector_##T *other) {                     \
         if (vector == other) return true;                                                           \
                                                                                                     \
-        for (uint32_t i = 0; i < other->count; ++i) {                                               \
+        for (vector_uint_t i = 0; i < other->count; ++i) {                                          \
             if (vector_index_of_##T(vector, other->storage[i]) != VECTOR_INDEX_NOT_FOUND)           \
                 return true;                                                                        \
         }                                                                                           \
@@ -352,12 +377,12 @@
  */
 #define __VECTOR_IMPL_COMPARABLE(T, SCOPE, __equal_func, __compare_func)                            \
                                                                                                     \
-    SCOPE uint32_t vector_index_of_min_##T(Vector_##T const *vec) {                                 \
+    SCOPE vector_uint_t vector_index_of_min_##T(Vector_##T const *vec) {                            \
         if (!vec->count) return VECTOR_INDEX_NOT_FOUND;                                             \
                                                                                                     \
-        uint32_t min_idx = 0;                                                                       \
+        vector_uint_t min_idx = 0;                                                                  \
                                                                                                     \
-        for (uint32_t i = 1; i < vec->count; ++i) {                                                 \
+        for (vector_uint_t i = 1; i < vec->count; ++i) {                                            \
             if (__compare_func(vec->storage[i], vec->storage[min_idx])) {                           \
                 min_idx = i;                                                                        \
             }                                                                                       \
@@ -366,12 +391,12 @@
         return min_idx;                                                                             \
     }                                                                                               \
                                                                                                     \
-    SCOPE uint32_t vector_index_of_max_##T(Vector_##T const *vec) {                                 \
+    SCOPE vector_uint_t vector_index_of_max_##T(Vector_##T const *vec) {                            \
         if (!vec->count) return VECTOR_INDEX_NOT_FOUND;                                             \
                                                                                                     \
-        uint32_t max_idx = 0;                                                                       \
+        vector_uint_t max_idx = 0;                                                                  \
                                                                                                     \
-        for (uint32_t i = 1; i < vec->count; ++i) {                                                 \
+        for (vector_uint_t i = 1; i < vec->count; ++i) {                                            \
             if (__compare_func(vec->storage[max_idx], vec->storage[i])) {                           \
                 max_idx = i;                                                                        \
             }                                                                                       \
@@ -380,10 +405,10 @@
         return max_idx;                                                                             \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_sort_range_##T(Vector_##T *vec, uint32_t start, uint32_t len) {               \
+    SCOPE void vector_sort_range_##T(Vector_##T *vec, vector_uint_t start, vector_uint_t len) {     \
         T *array = vec->storage + start;                                                            \
         start = 0;                                                                                  \
-        uint32_t pos = 0, seed = 31, stack[__VECTOR_SORT_STACK_SIZE];                               \
+        vector_uint_t pos = 0, seed = 31, stack[__VECTOR_SORT_STACK_SIZE];                          \
                                                                                                     \
         while (true) {                                                                              \
             for (; start + 1 < len; ++len) {                                                        \
@@ -393,7 +418,7 @@
                 seed = seed * 69069 + 1;                                                            \
                 stack[pos++] = len;                                                                 \
                                                                                                     \
-                for (uint32_t right = start - 1;;) {                                                \
+                for (vector_uint_t right = start - 1;;) {                                           \
                     __vector_analyzer_assert(false);                                                \
                     for (++right; __compare_func(array[right], pivot); ++right);                    \
                     for (--len; __compare_func(pivot, array[len]); --len);                          \
@@ -411,13 +436,13 @@
         }                                                                                           \
     }                                                                                               \
                                                                                                     \
-    SCOPE uint32_t vector_insertion_index_sorted_##T(Vector_##T const *vec, T item) {               \
+    SCOPE vector_uint_t vector_insertion_index_sorted_##T(Vector_##T const *vec, T item) {          \
         T const *array = vec->storage;                                                              \
-        uint32_t const linear_search_thresh = __VECTOR_CACHE_LINE_SIZE / sizeof(T);                 \
-        uint32_t r = vec->count, l = 0;                                                             \
+        vector_uint_t const linear_search_thresh = __VECTOR_CACHE_LINE_SIZE / sizeof(T);            \
+        vector_uint_t r = vec->count, l = 0;                                                        \
                                                                                                     \
         while (r - l > linear_search_thresh) {                                                      \
-            uint32_t m = l + (r - l) / 2;                                                           \
+            vector_uint_t m = l + (r - l) / 2;                                                      \
                                                                                                     \
             if (__compare_func(array[m], item))                                                     \
                 l = m + 1;                                                                          \
@@ -429,24 +454,24 @@
         return l;                                                                                   \
     }                                                                                               \
                                                                                                     \
-    SCOPE uint32_t vector_index_of_sorted_##T(Vector_##T const *vec, T item) {                      \
-        uint32_t const i = vector_insertion_index_sorted_##T(vec, item);                            \
+    SCOPE vector_uint_t vector_index_of_sorted_##T(Vector_##T const *vec, T item) {                 \
+        vector_uint_t const i = vector_insertion_index_sorted_##T(vec, item);                       \
         return vec->storage && __equal_func(vec->storage[i], item) ? i : VECTOR_INDEX_NOT_FOUND;    \
     }                                                                                               \
                                                                                                     \
-    SCOPE uint32_t vector_insert_sorted_##T(Vector_##T *vec, T item) {                              \
-        uint32_t const i = vector_insertion_index_sorted_##T(vec, item);                            \
+    SCOPE vector_uint_t vector_insert_sorted_##T(Vector_##T *vec, T item) {                         \
+        vector_uint_t const i = vector_insertion_index_sorted_##T(vec, item);                       \
         vector_insert_at_##T(vec, i, item);                                                         \
         return i;                                                                                   \
     }                                                                                               \
                                                                                                     \
-    SCOPE uint32_t vector_insertion_index_sorted_unique_##T(Vector_##T const *vec, T item) {        \
-        uint32_t const i = vector_insertion_index_sorted_##T(vec, item);                            \
+    SCOPE vector_uint_t vector_insertion_index_sorted_unique_##T(Vector_##T const *vec, T item) {   \
+        vector_uint_t const i = vector_insertion_index_sorted_##T(vec, item);                       \
         return vec->storage && __equal_func(vec->storage[i], item) ? VECTOR_INDEX_NOT_FOUND : i;    \
     }                                                                                               \
                                                                                                     \
-    SCOPE uint32_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item) {                       \
-        uint32_t const i = vector_insertion_index_sorted_unique_##T(vec, item);                     \
+    SCOPE vector_uint_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item) {                  \
+        vector_uint_t const i = vector_insertion_index_sorted_unique_##T(vec, item);                \
         if (i != VECTOR_INDEX_NOT_FOUND) vector_insert_at_##T(vec, i, item);                        \
         return i;                                                                                   \
     }
@@ -865,8 +890,8 @@
  */
 #define vector_iterate(T, vec, item_name, idx_name, code) do {                                      \
     if (vec) {                                                                                      \
-        uint32_t __n_##idx_name = (vec)->count;                                                     \
-        for (uint32_t idx_name = 0; idx_name != __n_##idx_name; ++idx_name) {                       \
+        vector_uint_t __n_##idx_name = (vec)->count;                                                \
+        for (vector_uint_t idx_name = 0; idx_name != __n_##idx_name; ++idx_name) {                  \
             T item_name = vector_get((vec), (idx_name));                                            \
             code;                                                                                   \
         }                                                                                           \
@@ -885,7 +910,7 @@
  */
 #define vector_iterate_reverse(T, vec, item_name, idx_name, code) do {                              \
     if (vec) {                                                                                      \
-        for (uint32_t idx_name = (vec)->count; idx_name-- != 0;) {                                  \
+        for (vector_uint_t idx_name = (vec)->count; idx_name-- != 0;) {                             \
             T item_name = vector_get((vec), (idx_name));                                            \
             code;                                                                                   \
         }                                                                                           \
@@ -1233,7 +1258,7 @@
  * @param __copy_func Copy function: (T) -> T
  */
 #define vector_deep_append(T, dest, source, __copy_func) do {                                       \
-    uint32_t __##__copy_func##_count = vector_count(source);                                        \
+    vector_uint_t __##__copy_func##_count = vector_count(source);                                   \
     if (__##__copy_func##_count) {                                                                  \
         vector_ensure(T, dest);                                                                     \
         vector_expand(T, dest, __##__copy_func##_count);                                            \
@@ -1262,7 +1287,7 @@
  *
  * @param T Vector type.
  * @param vec Vector instance.
- * @param idx_var uint32_t out variable (must be declared in outer scope).
+ * @param idx_var vector_uint_t out variable (must be declared in outer scope).
  * @param bool_exp Boolean expression.
  */
 #define vector_first_index_where(T, vec, idx_var, bool_exp) do {                                    \

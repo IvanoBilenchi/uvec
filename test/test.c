@@ -56,8 +56,8 @@ static void test_base(void) {
 
 static void test_capacity(void) {
     Vector(int) *v = vector_alloc(int);
-    uint32_t const capacity = 5;
-    uint32_t const expand = 3;
+    vector_uint_t const capacity = 5;
+    vector_uint_t const expand = 3;
 
     vector_reserve_capacity(int, v, capacity);
     assert(v->allocated >= capacity);
@@ -161,7 +161,7 @@ static void test_higher_order(void) {
     Vector(int) *v = vector_alloc(int);
     vector_append_items(int, v, 3, 2, 4, 1);
 
-    uint32_t idx;
+    vector_uint_t idx;
     vector_first_index_where(int, v, idx, _vec_item > 3);
     assert(idx == 2);
 
