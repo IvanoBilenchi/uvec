@@ -3,6 +3,9 @@
  *
  * @see test.c for usage examples.
  * @author Ivano Bilenchi
+ *
+ * @copyright Copyright (c) 2018-2019 Ivano Bilenchi <https://ivanobilenchi.com>
+ * @copyright SPDX-License-Identifier: MIT
  */
 #ifndef VECTOR_H
 #define VECTOR_H
@@ -13,6 +16,16 @@
 #include <string.h>
 
 /// @name Configuration
+
+/**
+ * @def vector_uint_t
+ * Unsigned integer type.
+ */
+
+/**
+ * @def VECTOR_UINT_MAX
+ * Maximum value of a vector_uint_t variable.
+ */
 
 #if defined VECTOR_TINY
     #define vector_uint_t uint16_t
