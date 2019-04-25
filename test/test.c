@@ -29,7 +29,7 @@
 
 /// @name Type definitions
 
-VECTOR_INIT_IDENTIFIABLE(int);
+VECTOR_INIT_IDENTIFIABLE(int)
 
 static int int_comparator(const void * a, const void * b) {
     int va = *(const int*)a;
