@@ -65,7 +65,9 @@
 #define VECTOR_INDEX_NOT_FOUND VECTOR_UINT_MAX
 
 /// Cache line size (B).
-#define __VECTOR_CACHE_LINE_SIZE 64
+#ifndef VECTOR_CACHE_LINE_SIZE
+    #define VECTOR_CACHE_LINE_SIZE 64
+#endif
 
 /// Quicksort stack size.
 #define __VECTOR_SORT_STACK_SIZE 64
@@ -454,7 +456,7 @@
                                                                                                     \
     SCOPE vector_uint_t vector_insertion_index_sorted_##T(Vector_##T const *vec, T item) {          \
         T const *array = vec->storage;                                                              \
-        vector_uint_t const linear_search_thresh = __VECTOR_CACHE_LINE_SIZE / sizeof(T);            \
+        vector_uint_t const linear_search_thresh = VECTOR_CACHE_LINE_SIZE / sizeof(T);              \
         vector_uint_t r = vec->count, l = 0;                                                        \
                                                                                                     \
         while (r - l > linear_search_thresh) {                                                      \
