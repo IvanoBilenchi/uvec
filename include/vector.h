@@ -28,7 +28,8 @@
  */
 
 #if defined VECTOR_TINY
-    #define vector_uint_t uint16_t
+    typedef uint16_t vector_uint_t;
+
     #define VECTOR_UINT_MAX UINT16_MAX
 
     #define __vector_uint_next_power_2(x) (                                                         \
@@ -37,7 +38,8 @@
         ++(x)                                                                                       \
     )
 #elif defined VECTOR_HUGE
-    #define vector_uint_t uint64_t
+    typedef uint64_t vector_uint_t;
+
     #define VECTOR_UINT_MAX UINT64_MAX
 
     #define __vector_uint_next_power_2(x) (                                                         \
@@ -46,7 +48,8 @@
         ++(x)                                                                                       \
     )
 #else
-    #define vector_uint_t uint32_t
+    typedef uint32_t vector_uint_t;
+
     #define VECTOR_UINT_MAX UINT32_MAX
 
     #define __vector_uint_next_power_2(x) (                                                         \
@@ -139,8 +142,8 @@
  */
 #define __VECTOR_DEF_TYPE(T)                                                                        \
     typedef struct Vector_##T {                                                                     \
-        vector_uint_t count;                                                                        \
         vector_uint_t allocated;                                                                    \
+        vector_uint_t count;                                                                        \
         T *storage;                                                                                 \
     } Vector_##T;
 
