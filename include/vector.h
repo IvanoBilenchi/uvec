@@ -176,13 +176,13 @@
  * @param SCOPE [scope] Scope of the declarations.
  */
 #define __VECTOR_DECL_EQUATABLE(T, SCOPE)                                                           \
-    SCOPE vector_uint_t vector_index_of_##T(Vector_##T *vector, T item);                            \
-    SCOPE vector_uint_t vector_index_of_reverse_##T(Vector_##T *vector, T item);                    \
+    SCOPE vector_uint_t vector_index_of_##T(Vector_##T const *vector, T item);                      \
+    SCOPE vector_uint_t vector_index_of_reverse_##T(Vector_##T const *vector, T item);              \
     SCOPE bool vector_push_unique_##T(Vector_##T *vector, T item);                                  \
     SCOPE bool vector_remove_##T(Vector_##T *vector, T item);                                       \
-    SCOPE bool vector_equals_##T(Vector_##T *vector, Vector_##T *other);                            \
-    SCOPE bool vector_contains_all_##T(Vector_##T *vector, Vector_##T *other);                      \
-    SCOPE bool vector_contains_any_##T(Vector_##T *vector, Vector_##T *other);
+    SCOPE bool vector_equals_##T(Vector_##T const *vector, Vector_##T const *other);                \
+    SCOPE bool vector_contains_all_##T(Vector_##T const *vector, Vector_##T const *other);          \
+    SCOPE bool vector_contains_any_##T(Vector_##T const *vector, Vector_##T const *other);
 
 /**
  * Generates function declarations for the specified comparable vector type.
@@ -316,14 +316,14 @@
  */
 #define __VECTOR_IMPL_EQUATABLE(T, SCOPE, __equal_func, equal_func_is_identity)                     \
                                                                                                     \
-    SCOPE vector_uint_t vector_index_of_##T(Vector_##T *vector, T item) {                           \
+    SCOPE vector_uint_t vector_index_of_##T(Vector_##T const *vector, T item) {                     \
         for (vector_uint_t i = 0; i < vector->count; ++i) {                                         \
             if (__equal_func(vector->storage[i], item)) return i;                                   \
         }                                                                                           \
         return VECTOR_INDEX_NOT_FOUND;                                                              \
     }                                                                                               \
                                                                                                     \
-    SCOPE vector_uint_t vector_index_of_reverse_##T(Vector_##T *vector, T item) {                   \
+    SCOPE vector_uint_t vector_index_of_reverse_##T(Vector_##T const *vector, T item) {             \
         for (vector_uint_t i = vector->count; i-- != 0;) {                                          \
             if (__equal_func(vector->storage[i], item)) return i;                                   \
         }                                                                                           \
@@ -347,7 +347,7 @@
         return false;                                                                               \
     }                                                                                               \
                                                                                                     \
-    SCOPE bool vector_equals_##T(Vector_##T *vector, Vector_##T *other) {                           \
+    SCOPE bool vector_equals_##T(Vector_##T const *vector, Vector_##T const *other) {               \
         if (vector == other) return true;                                                           \
         if (vector->count != other->count) return false;                                            \
         if (!vector->count) return true;                                                            \
@@ -363,7 +363,7 @@
         return true;                                                                                \
     }                                                                                               \
                                                                                                     \
-    SCOPE bool vector_contains_all_##T(Vector_##T *vector, Vector_##T *other) {                     \
+    SCOPE bool vector_contains_all_##T(Vector_##T const *vector, Vector_##T const *other) {         \
         if (vector == other) return true;                                                           \
                                                                                                     \
         for (vector_uint_t i = 0; i < other->count; ++i) {                                          \
@@ -374,7 +374,7 @@
         return true;                                                                                \
     }                                                                                               \
                                                                                                     \
-    SCOPE bool vector_contains_any_##T(Vector_##T *vector, Vector_##T *other) {                     \
+    SCOPE bool vector_contains_any_##T(Vector_##T const *vector, Vector_##T const *other) {         \
         if (vector == other) return true;                                                           \
                                                                                                     \
         for (vector_uint_t i = 0; i < other->count; ++i) {                                          \
