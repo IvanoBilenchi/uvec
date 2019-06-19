@@ -508,6 +508,16 @@
     __VECTOR_DECL(T, __vector_unused)
 
 /**
+ * Declares a new vector type, prepending a specifier to the generated declarations.
+ *
+ * @param T [symbol] Vector type.
+ * @param SPEC [specifier] Specifier.
+ */
+#define VECTOR_DECL_SPEC(T, SPEC)                                                                   \
+    __VECTOR_DEF_TYPE(T)                                                                            \
+    __VECTOR_DECL(T, SPEC __vector_unused)
+
+/**
  * Declares a new equatable vector type.
  *
  * @param T [symbol] Vector type.
@@ -516,6 +526,17 @@
     __VECTOR_DEF_TYPE(T)                                                                            \
     __VECTOR_DECL(T, __vector_unused)                                                               \
     __VECTOR_DECL_EQUATABLE(T, __vector_unused)
+
+/**
+ * Declares a new equatable vector type, prepending a specifier to the generated declarations.
+ *
+ * @param T [symbol] Vector type.
+ * @param SPEC [specifier] Specifier.
+ */
+#define VECTOR_DECL_EQUATABLE_SPEC(T, SPEC)                                                         \
+    __VECTOR_DEF_TYPE(T)                                                                            \
+    __VECTOR_DECL(T, SPEC __vector_unused)                                                          \
+    __VECTOR_DECL_EQUATABLE(T, SPEC __vector_unused)
 
 /**
  * Declares a new comparable vector type.
@@ -527,6 +548,18 @@
     __VECTOR_DECL(T, __vector_unused)                                                               \
     __VECTOR_DECL_EQUATABLE(T, __vector_unused)                                                     \
     __VECTOR_DECL_COMPARABLE(T, __vector_unused)
+
+/**
+ * Declares a new comparable vector type, prepending a specifier to the generated declarations.
+ *
+ * @param T [symbol] Vector type.
+ * @param SPEC [specifier] Specifier.
+ */
+#define VECTOR_DECL_COMPARABLE_SPEC(T, SPEC)                                                        \
+    __VECTOR_DEF_TYPE(T)                                                                            \
+    __VECTOR_DECL(T, SPEC __vector_unused)                                                          \
+    __VECTOR_DECL_EQUATABLE(T, SPEC __vector_unused)                                                \
+    __VECTOR_DECL_COMPARABLE(T, SPEC __vector_unused)
 
 /**
  * Implements a previously declared vector type.
