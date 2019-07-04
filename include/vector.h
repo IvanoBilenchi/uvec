@@ -1,4 +1,4 @@
-/** @file
+/**
  * Vector(T) - a type-safe, generic C vector.
  *
  * @see test.c for usage examples.
@@ -6,6 +6,8 @@
  *
  * @copyright Copyright (c) 2018-2019 Ivano Bilenchi <https://ivanobilenchi.com>
  * @copyright SPDX-License-Identifier: MIT
+ *
+ * @file
  */
 #ifndef VECTOR_H
 #define VECTOR_H
@@ -15,51 +17,40 @@
 #include <stdlib.h>
 #include <string.h>
 
-/// @name Configuration
+// #########
+// # Types #
+// #########
 
 /**
- * @def vector_uint_t
+ * A type safe, generic vector.
+ * @struct Vector
+ */
+
+/**
  * Unsigned integer type.
+ *
+ * @public @memberof Vector
  */
-
-/**
- * @def VECTOR_UINT_MAX
- * Maximum value of a vector_uint_t variable.
- */
-
 #if defined VECTOR_TINY
     typedef uint16_t vector_uint_t;
-
-    #define VECTOR_UINT_MAX UINT16_MAX
-
-    #define __vector_uint_next_power_2(x) (                                                         \
-        --(x),                                                                                      \
-        (x)|=(x)>>1u, (x)|=(x)>>2u, (x)|=(x)>>4u, (x)|=(x)>>8u,                                     \
-        ++(x)                                                                                       \
-    )
 #elif defined VECTOR_HUGE
     typedef uint64_t vector_uint_t;
-
-    #define VECTOR_UINT_MAX UINT64_MAX
-
-    #define __vector_uint_next_power_2(x) (                                                         \
-        --(x),                                                                                      \
-        (x)|=(x)>>1u, (x)|=(x)>>2u, (x)|=(x)>>4u, (x)|=(x)>>8u, (x)|=(x)>>16u, (x)|=(x)>>32u,       \
-        ++(x)                                                                                       \
-    )
 #else
     typedef uint32_t vector_uint_t;
-
-    #define VECTOR_UINT_MAX UINT32_MAX
-
-    #define __vector_uint_next_power_2(x) (                                                         \
-        --(x),                                                                                      \
-        (x)|=(x)>>1u, (x)|=(x)>>2u, (x)|=(x)>>4u, (x)|=(x)>>8u, (x)|=(x)>>16u,                      \
-        ++(x)                                                                                       \
-    )
 #endif
 
-/// @name Constants
+// #############
+// # Constants #
+// #############
+
+/// Maximum value of a vector_uint_t variable.
+#if defined VECTOR_TINY
+    #define VECTOR_UINT_MAX UINT16_MAX
+#elif defined VECTOR_HUGE
+    #define VECTOR_UINT_MAX UINT64_MAX
+#else
+    #define VECTOR_UINT_MAX UINT32_MAX
+#endif
 
 /// Index returned by find-like functions when a matching element cannot be found.
 #define VECTOR_INDEX_NOT_FOUND VECTOR_UINT_MAX
@@ -72,7 +63,9 @@
 /// Quicksort stack size.
 #define __VECTOR_SORT_STACK_SIZE 64
 
-/// @name Private API and Implementation
+// ###############
+// # Private API #
+// ###############
 
 /// Concatenates the 'a' and 'b' tokens, allowing 'a' and 'b' to be macro-expanded.
 #define __MACRO_CONCAT(a, b) __MACRO_CONCAT_INNER(a, b)
@@ -104,6 +97,31 @@
     #define __vector_analyzer_assert(c) do { if (!(c)) exit(1); } while(0)
 #else
     #define __vector_analyzer_assert(c)
+#endif
+
+/**
+ * Changes the specified unsigned integer into the next power of two.
+ *
+ * @param x [vector_uint_t] Unsigned integer.
+ */
+#if defined VECTOR_TINY
+    #define __vector_uint_next_power_2(x) (                                                         \
+        --(x),                                                                                      \
+        (x)|=(x)>>1u, (x)|=(x)>>2u, (x)|=(x)>>4u, (x)|=(x)>>8u,                                     \
+        ++(x)                                                                                       \
+    )
+#elif defined VECTOR_HUGE
+    #define __vector_uint_next_power_2(x) (                                                         \
+        --(x),                                                                                      \
+        (x)|=(x)>>1u, (x)|=(x)>>2u, (x)|=(x)>>4u, (x)|=(x)>>8u, (x)|=(x)>>16u, (x)|=(x)>>32u,       \
+        ++(x)                                                                                       \
+    )
+#else
+    #define __vector_uint_next_power_2(x) (                                                         \
+        --(x),                                                                                      \
+        (x)|=(x)>>1u, (x)|=(x)>>2u, (x)|=(x)>>4u, (x)|=(x)>>8u, (x)|=(x)>>16u,                      \
+        ++(x)                                                                                       \
+    )
 #endif
 
 /**
@@ -144,9 +162,11 @@
  */
 #define __VECTOR_DEF_TYPE(T)                                                                        \
     typedef struct Vector_##T {                                                                     \
+        /** @cond */                                                                                \
         vector_uint_t allocated;                                                                    \
         vector_uint_t count;                                                                        \
         T *storage;                                                                                 \
+        /** @endcond */                                                                             \
     } Vector_##T;
 
 /**
@@ -156,6 +176,7 @@
  * @param SCOPE [scope] Scope of the declarations.
  */
 #define __VECTOR_DECL(T, SCOPE)                                                                     \
+    /** @cond */                                                                                    \
     SCOPE Vector_##T* vector_alloc_##T(void);                                                       \
     SCOPE void vector_free_##T(Vector_##T *vector);                                                 \
     SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, vector_uint_t capacity);             \
@@ -167,7 +188,8 @@
     SCOPE void vector_remove_at_##T(Vector_##T *vector, vector_uint_t idx);                         \
     SCOPE void vector_insert_at_##T(Vector_##T *vector, vector_uint_t idx, T item);                 \
     SCOPE void vector_remove_all_##T(Vector_##T *vector);                                           \
-    SCOPE void vector_reverse_##T(Vector_##T *vector);
+    SCOPE void vector_reverse_##T(Vector_##T *vector);                                              \
+    /** @endcond */
 
 /**
  * Generates function declarations for the specified equatable vector type.
@@ -176,13 +198,15 @@
  * @param SCOPE [scope] Scope of the declarations.
  */
 #define __VECTOR_DECL_EQUATABLE(T, SCOPE)                                                           \
+    /** @cond */                                                                                    \
     SCOPE vector_uint_t vector_index_of_##T(Vector_##T const *vector, T item);                      \
     SCOPE vector_uint_t vector_index_of_reverse_##T(Vector_##T const *vector, T item);              \
     SCOPE bool vector_push_unique_##T(Vector_##T *vector, T item);                                  \
     SCOPE bool vector_remove_##T(Vector_##T *vector, T item);                                       \
     SCOPE bool vector_equals_##T(Vector_##T const *vector, Vector_##T const *other);                \
     SCOPE bool vector_contains_all_##T(Vector_##T const *vector, Vector_##T const *other);          \
-    SCOPE bool vector_contains_any_##T(Vector_##T const *vector, Vector_##T const *other);
+    SCOPE bool vector_contains_any_##T(Vector_##T const *vector, Vector_##T const *other);          \
+    /** @endcond */
 
 /**
  * Generates function declarations for the specified comparable vector type.
@@ -191,6 +215,7 @@
  * @param SCOPE [scope] Scope of the declarations.
  */
 #define __VECTOR_DECL_COMPARABLE(T, SCOPE)                                                          \
+    /** @cond */                                                                                    \
     SCOPE vector_uint_t vector_index_of_min_##T(Vector_##T const *vec);                             \
     SCOPE vector_uint_t vector_index_of_max_##T(Vector_##T const *vec);                             \
     SCOPE void vector_sort_range_##T(Vector_##T *vec, vector_uint_t start, vector_uint_t len);      \
@@ -198,7 +223,8 @@
     SCOPE vector_uint_t vector_index_of_sorted_##T(Vector_##T const *vec, T item);                  \
     SCOPE vector_uint_t vector_insert_sorted_##T(Vector_##T *vec, T item);                          \
     SCOPE vector_uint_t vector_insertion_index_sorted_unique_##T(Vector_##T const *vec, T item);    \
-    SCOPE vector_uint_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item);
+    SCOPE vector_uint_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item);                   \
+    /** @endcond */
 
 /**
  * Generates function definitions for the specified vector type.
@@ -494,7 +520,9 @@
         return i;                                                                                   \
     }
 
-/// @name Public API
+// ##############
+// # Public API #
+// ##############
 
 /// @name Type definitions
 
@@ -502,6 +530,8 @@
  * Declares a new vector type.
  *
  * @param T [symbol] Vector type.
+ *
+ * @related Vector
  */
 #define VECTOR_DECL(T)                                                                              \
     __VECTOR_DEF_TYPE(T)                                                                            \
@@ -512,6 +542,8 @@
  *
  * @param T [symbol] Vector type.
  * @param SPEC [specifier] Specifier.
+ *
+ * @public @related Vector
  */
 #define VECTOR_DECL_SPEC(T, SPEC)                                                                   \
     __VECTOR_DEF_TYPE(T)                                                                            \
@@ -521,6 +553,8 @@
  * Declares a new equatable vector type.
  *
  * @param T [symbol] Vector type.
+ *
+ * @public @related Vector
  */
 #define VECTOR_DECL_EQUATABLE(T)                                                                    \
     __VECTOR_DEF_TYPE(T)                                                                            \
@@ -532,6 +566,8 @@
  *
  * @param T [symbol] Vector type.
  * @param SPEC [specifier] Specifier.
+ *
+ * @public @related Vector
  */
 #define VECTOR_DECL_EQUATABLE_SPEC(T, SPEC)                                                         \
     __VECTOR_DEF_TYPE(T)                                                                            \
@@ -542,6 +578,8 @@
  * Declares a new comparable vector type.
  *
  * @param T [symbol] Vector type.
+ *
+ * @public @related Vector
  */
 #define VECTOR_DECL_COMPARABLE(T)                                                                   \
     __VECTOR_DEF_TYPE(T)                                                                            \
@@ -554,6 +592,8 @@
  *
  * @param T [symbol] Vector type.
  * @param SPEC [specifier] Specifier.
+ *
+ * @public @related Vector
  */
 #define VECTOR_DECL_COMPARABLE_SPEC(T, SPEC)                                                        \
     __VECTOR_DEF_TYPE(T)                                                                            \
@@ -565,6 +605,8 @@
  * Implements a previously declared vector type.
  *
  * @param T [symbol] Vector type.
+ *
+ * @public @related Vector
  */
 #define VECTOR_IMPL(T) \
     __VECTOR_IMPL(T, __vector_unused)
@@ -575,6 +617,8 @@
  *
  * @param T [symbol] Vector type.
  * @param __equal_func [(T, T) -> bool] Equality function.
+ *
+ * @public @related Vector
  */
 #define VECTOR_IMPL_EQUATABLE(T, __equal_func)                                                      \
     __VECTOR_IMPL(T, __vector_unused)                                                               \
@@ -588,6 +632,8 @@
  * @param T [symbol] Vector type.
  * @param __equal_func [(T, T) -> bool] Equality function.
  * @param __compare_func [(T, T) -> bool] Comparison function (True if LHS is smaller than RHS).
+ *
+ * @public @related Vector
  */
 #define VECTOR_IMPL_COMPARABLE(T, __equal_func, __compare_func)                                     \
     __VECTOR_IMPL(T, __vector_unused)                                                               \
@@ -599,6 +645,8 @@
  * whose elements can be checked for equality via == and compared via <.
  *
  * @param T [symbol] Vector type.
+ *
+ * @public @related Vector
  */
 #define VECTOR_IMPL_IDENTIFIABLE(T)                                                                 \
     __VECTOR_IMPL(T, __vector_unused)                                                               \
@@ -609,6 +657,8 @@
  * Defines a new static vector type.
  *
  * @param T [symbol] Vector type.
+ *
+ * @public @related Vector
  */
 #define VECTOR_INIT(T)                                                                              \
     __VECTOR_DEF_TYPE(T)                                                                            \
@@ -619,6 +669,8 @@
  *
  * @param T [symbol] Vector type.
  * @param __equal_func [(T, T) -> bool] Equality function.
+ *
+ * @public @related Vector
  */
 #define VECTOR_INIT_EQUATABLE(T, __equal_func)                                                      \
     __VECTOR_DEF_TYPE(T)                                                                            \
@@ -631,6 +683,8 @@
  * @param T [symbol] Vector type.
  * @param __equal_func [(T, T) -> bool] Equality function.
  * @param __compare_func [(T, T) -> bool] Comparison function (True if LHS is smaller than RHS).
+ *
+ * @public @related Vector
  */
 #define VECTOR_INIT_COMPARABLE(T, __equal_func, __compare_func)                                     \
     __VECTOR_DEF_TYPE(T)                                                                            \
@@ -643,6 +697,8 @@
  * whose elements can be checked for equality via == and compared via <.
  *
  * @param T [symbol] Vector type.
+ *
+ * @public @related Vector
  */
 #define VECTOR_INIT_IDENTIFIABLE(T)                                                                 \
     __VECTOR_DEF_TYPE(T)                                                                            \
@@ -656,6 +712,8 @@
  * Declares a new vector variable.
  *
  * @param T [symbol] Vector type.
+ *
+ * @public @related Vector
  */
 #define Vector(T) __MACRO_CONCAT(Vector_, T)
 
@@ -663,6 +721,8 @@
  * Expands to 'struct Vector_T', useful for forward-declarations.
  *
  * @param T [symbol] Vector type.
+ *
+ * @public @related Vector
  */
 #define vector_struct(T) struct __MACRO_CONCAT(Vector_, T)
 
@@ -673,6 +733,8 @@
  *
  * @param T [symbol] Vector type.
  * @return [Vector(T)*] Vector instance.
+ *
+ * @public @related Vector
  */
 #define vector_alloc(T) __MACRO_CONCAT(vector_alloc_, T)()
 
@@ -683,6 +745,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector variable.
  * @return [Vector(T)*] Variable 'vec' expands to.
+ *
+ * @public @related Vector
  */
 #define vector_ensure(T, vec) (vec ? vec : (vec = vector_alloc(T)))
 
@@ -691,6 +755,8 @@
  *
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector to free.
+ *
+ * @public @related Vector
  */
 #define vector_free(T, vec) __MACRO_CONCAT(vector_free_, T)(vec)
 
@@ -700,6 +766,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector to copy.
  * @return [Vector(T)*] Copied vector instance.
+ *
+ * @public @related Vector
  */
 #define vector_copy(T, vec) __MACRO_CONCAT(vector_copy_, T)(vec)
 
@@ -708,6 +776,8 @@
  *
  * @param T [symbol] Vector type.
  * @return [Vector(T)] Initialized vector instance.
+ *
+ * @public @related Vector
  */
 #define vector_init(T) \
     ((__MACRO_CONCAT(Vector_, T)){ .count = 0, .allocated = 0, .storage = NULL })
@@ -716,6 +786,8 @@
  * De-initializes a vector previously initialized via VECTOR_INIT.
  *
  * @param vec [Vector(T)] Vector to de-initialize.
+ *
+ * @public @related Vector
  */
 #define vector_deinit(vec) do {                                                                     \
     if ((vec).storage) {                                                                            \
@@ -731,6 +803,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param size [vector_uint_t] Number of elements the vector should be able to hold.
+ *
+ * @public @related Vector
  */
 #define vector_reserve_capacity(T, vec, size) \
     __MACRO_CONCAT(vector_reserve_capacity_, T)(vec, size)
@@ -741,6 +815,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector to expand.
  * @param size [vector_uint_t] Number of additional elements the vector should be able to hold.
+ *
+ * @public @related Vector
  */
 #define vector_expand(T, vec, size) \
     __MACRO_CONCAT(vector_reserve_capacity_, T)(vec, (vec->count + size))
@@ -751,6 +827,8 @@
  *
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector to shrink.
+ *
+ * @public @related Vector
  */
 #define vector_shrink(T, vec) __MACRO_CONCAT(vector_shrink_, T)(vec)
 
@@ -762,6 +840,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param idx [vector_uint_t] Index.
  * @return [T] Element at the specified index.
+ *
+ * @public @related Vector
  */
 #define vector_get(vec, idx) ((vec)->storage[(idx)])
 
@@ -771,6 +851,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param idx [vector_uint_t] Index.
  * @param item [T] Replacement element.
+ *
+ * @public @related Vector
  */
 #define vector_set(vec, idx, item) ((vec)->storage[(idx)] = (item))
 
@@ -779,6 +861,8 @@
  *
  * @param vec [Vector(T)*] Vector instance.
  * @return [T] First element.
+ *
+ * @public @related Vector
  */
 #define vector_first(vec) ((vec)->storage[0])
 
@@ -787,6 +871,8 @@
  *
  * @param vec [Vector(T)*] Vector instance.
  * @return [T] Last element.
+ *
+ * @public @related Vector
  */
 #define vector_last(vec) ((vec)->storage[(vec)->count-1])
 
@@ -797,6 +883,8 @@
  * @return [bool] True if the vector is empty, false otherwise.
  *
  * @note For convenience, this macro returns 'true' for NULL vectors.
+ *
+ * @public @related Vector
  */
 #define vector_is_empty(vec) (!((vec) && (vec)->count))
 
@@ -807,6 +895,8 @@
  * @return [vector_uint_t] Number of elements.
  *
  * @note For convenience, this macro returns '0' for NULL vectors.
+ *
+ * @public @related Vector
  */
 #define vector_count(vec) ((vec) ? (vec)->count : 0)
 
@@ -816,6 +906,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to push.
+ *
+ * @public @related Vector
  */
 #define vector_push(T, vec, item) __MACRO_CONCAT(vector_push_, T)(vec, item)
 
@@ -825,6 +917,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @return [T] Last element.
+ *
+ * @public @related Vector
  */
 #define vector_pop(T, vec) __MACRO_CONCAT(vector_pop_, T)(vec)
 
@@ -834,6 +928,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param idx [vector_uint_t] Index of the element to remove.
+ *
+ * @public @related Vector
  */
 #define vector_remove_at(T, vec, idx) __MACRO_CONCAT(vector_remove_at_, T)(vec, idx)
 
@@ -844,6 +940,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param idx [vector_uint_t] Index at which the element should be inserted.
  * @param item [T] Element to insert.
+ *
+ * @public @related Vector
  */
 #define vector_insert_at(T, vec, idx, item) __MACRO_CONCAT(vector_insert_at_, T)(vec, idx, item)
 
@@ -852,6 +950,8 @@
  *
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
+ *
+ * @public @related Vector
  */
 #define vector_remove_all(T, vec) __MACRO_CONCAT(vector_remove_all_, T)(vec)
 
@@ -861,6 +961,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param vec_to_append [Vector(T)*] Vector to append.
+ *
+ * @public @related Vector
  */
 #define vector_append(T, vec, vec_to_append) \
     __MACRO_CONCAT(vector_append_array_, T)(vec, (vec_to_append)->storage, (vec_to_append)->count)
@@ -872,6 +974,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param array [T*] Array to append.
  * @param n [vector_uint_t] Number of elements to append.
+ *
+ * @public @related Vector
  */
 #define vector_append_array(T, vec, array, n) \
     __MACRO_CONCAT(vector_append_array_, T)(vec, array, n)
@@ -882,6 +986,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param ... [T] Elements to append.
+ *
+ * @public @related Vector
  */
 #define vector_append_items(T, vec, ...) do {                                                       \
     T const __vec_##T##_init[] = { __VA_ARGS__ };                                                   \
@@ -895,6 +1001,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to push.
+ *
+ * @public @related Vector
  */
 #define vector_push_lazy(T, vec, item) \
     do { vector_ensure(T, vec); vector_push(T, vec, item); } while(0)
@@ -905,6 +1013,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param vec_to_append [Vector(T)*] Vector to append.
+ *
+ * @public @related Vector
  */
 #define vector_append_lazy(T, vec, vec_to_append) \
     do { vector_ensure(T, vec); vector_append(T, vec, vec_to_append); } while(0)
@@ -916,6 +1026,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param array [T*] Array to append.
  * @param n [vector_uint_t] Number of elements to append.
+ *
+ * @public @related Vector
  */
 #define vector_append_array_lazy(T, vec, array, n) \
     do { vector_ensure(T, vec); vector_append_array(T, vec, array, n); } while(0)
@@ -925,6 +1037,8 @@
  *
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
+ *
+ * @public @related Vector
  */
 #define vector_reverse(T, vec) __MACRO_CONCAT(vector_reverse_, T)(vec)
 
@@ -938,6 +1052,8 @@
  * @param item_name [symbol] Name of the element variable.
  * @param idx_name [symbol] Name of the index variable.
  * @param code [code] Code block to execute.
+ *
+ * @public @related Vector
  */
 #define vector_iterate(T, vec, item_name, idx_name, code) do {                                      \
     if (vec) {                                                                                      \
@@ -958,6 +1074,8 @@
  * @param item_name [symbol] Name of the element variable.
  * @param idx_name [symbol] Name of the index variable.
  * @param code [code] Code block to execute.
+ *
+ * @public @related Vector
  */
 #define vector_iterate_reverse(T, vec, item_name, idx_name, code) do {                              \
     if (vec) {                                                                                      \
@@ -976,6 +1094,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item_name [symbol] Name of the element variable.
  * @param code [code] Code block to execute.
+ *
+ * @public @related Vector
  */
 #define vector_foreach(T, vec, item_name, code) \
     vector_iterate(T, vec, item_name, __i_##item_name, code)
@@ -988,6 +1108,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item_name [symbol] Name of the element variable.
  * @param code [code] Code block to execute.
+ *
+ * @public @related Vector
  */
 #define vector_foreach_reverse(T, vec, item_name, code) \
     vector_iterate_reverse(T, vec, item_name, __i_##item_name, code)
@@ -1001,6 +1123,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to search.
  * @return [vector_uint_t] Index of the found element, or VECTOR_INDEX_NOT_FOUND.
+ *
+ * @public @related Vector
  */
 #define vector_index_of(T, vec, item) __MACRO_CONCAT(vector_index_of_, T)(vec, item)
 
@@ -1011,6 +1135,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to search.
  * @return [vector_uint_t] Index of the found element, or VECTOR_INDEX_NOT_FOUND.
+ *
+ * @public @related Vector
  */
 #define vector_index_of_reverse(T, vec, item) \
     __MACRO_CONCAT(vector_index_of_reverse_, T)(vec, item)
@@ -1022,6 +1148,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to search.
  * @return [bool] True if the vector contains the specified element, false otherwise.
+ *
+ * @public @related Vector
  */
 #define vector_contains(T, vec, item) \
     (__MACRO_CONCAT(vector_index_of_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
@@ -1033,6 +1161,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param other_vec [Vector(T)*] Vector containing the elements to search.
  * @return [bool] True if the vector contains all the specified elements, false otherwise.
+ *
+ * @public @related Vector
  */
 #define vector_contains_all(T, vec, other_vec) \
     __MACRO_CONCAT(vector_contains_all_, T)(vec, other_vec)
@@ -1044,6 +1174,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param other_vec [Vector(T)*] Vector containing the elements to search.
  * @return [bool] True if the vector contains any of the specified elements, false otherwise.
+ *
+ * @public @related Vector
  */
 #define vector_contains_any(T, vec, other_vec) \
     __MACRO_CONCAT(vector_contains_any_, T)(vec, other_vec)
@@ -1055,6 +1187,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to remove.
  * @return [bool] True if the element was found and removed, false otherwise.
+ *
+ * @public @related Vector
  */
 #define vector_remove(T, vec, item) __MACRO_CONCAT(vector_remove_, T)(vec, item)
 
@@ -1066,6 +1200,8 @@
  * @param vec_a [Vector(T)*] First vector.
  * @param vec_b [Vector(T)*] Second vector.
  * @return [bool] True if the vectors are equal, false otherwise.
+ *
+ * @public @related Vector
  */
 #define vector_equals(T, vec_a, vec_b) __MACRO_CONCAT(vector_equals_, T)(vec_a, vec_b)
 
@@ -1076,6 +1212,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to push.
  * @return [bool] True if the element was pushed, false otherwise.
+ *
+ * @public @related Vector
  */
 #define vector_push_unique(T, vec, item) __MACRO_CONCAT(vector_push_unique_, T)(vec, item)
 
@@ -1085,6 +1223,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param vec_to_append [Vector(T)*] Vector containing the elements to append.
+ *
+ * @public @related Vector
  */
 #define vector_append_unique(T, vec, vec_to_append)                                                 \
     vector_foreach(T, vec_to_append, __item, {                                                      \
@@ -1097,6 +1237,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param vec_to_remove [Vector(T)*] Vector containing the elements to remove.
+ *
+ * @public @related Vector
  */
 #define vector_remove_all_from(T, vec, vec_to_remove)                                               \
     vector_foreach(T, vec_to_remove, __item, {                                                      \
@@ -1109,6 +1251,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to push.
+ *
+ * @public @related Vector
  */
 #define vector_push_unique_lazy(T, vec, item) \
     do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
@@ -1119,6 +1263,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param vec_to_append [Vector(T)*] Vector containing the elements to append.
+ *
+ * @public @related Vector
  */
 #define vector_append_unique_lazy(T, vec, vec_to_append) \
     do { vector_ensure(T, vec); vector_append_unique(T, vec, vec_to_append); } while(0)
@@ -1131,6 +1277,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @return [vector_uint_t] Index of the minimum element.
+ *
+ * @public @related Vector
  */
 #define vector_index_of_min(T, vec) __MACRO_CONCAT(vector_index_of_min_, T)(vec)
 
@@ -1140,6 +1288,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @return [vector_uint_t] Index of the maximum element.
+ *
+ * @public @related Vector
  */
 #define vector_index_of_max(T, vec) __MACRO_CONCAT(vector_index_of_max_, T)(vec)
 
@@ -1149,6 +1299,8 @@
  *
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
+ *
+ * @public @related Vector
  */
 #define vector_sort(T, vec) __MACRO_CONCAT(vector_sort_range_, T)(vec, 0, (vec)->count)
 
@@ -1160,6 +1312,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param start [vector_uint_t] Range start index.
  * @param len [vector_uint_t] Range length.
+ *
+ * @public @related Vector
  */
 #define vector_sort_range(T, vec, start, len) \
     __MACRO_CONCAT(vector_sort_range_, T)(vec, start, len)
@@ -1172,6 +1326,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element whose insertion index should be found.
  * @return [vector_uint_t] Insertion index.
+ *
+ * @public @related Vector
  */
 #define vector_insertion_index_sorted(T, vec, item) \
     __MACRO_CONCAT(vector_insertion_index_sorted_, T)(vec, item)
@@ -1186,6 +1342,8 @@
  * @return [vector_uint_t] Index of the found element, or VECTOR_INDEX_NOT_FOUND.
  *
  * @note The returned index is not necessarily the first occurrence of the item.
+ *
+ * @public @related Vector
  */
 #define vector_index_of_sorted(T, vec, item) \
     __MACRO_CONCAT(vector_index_of_sorted_, T)(vec, item)
@@ -1198,6 +1356,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to search.
  * @return [bool] True if the vector contains the specified element, false otherwise.
+ *
+ * @public @related Vector
  */
 #define vector_contains_sorted(T, vec, item) \
     (__MACRO_CONCAT(vector_index_of_sorted_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
@@ -1210,6 +1370,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to insert.
  * @return [vector_uint_t] Index of the inserted element.
+ *
+ * @public @related Vector
  */
 #define vector_insert_sorted(T, vec, item) \
     __MACRO_CONCAT(vector_insert_sorted_, T)(vec, item)
@@ -1220,6 +1382,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param source [Vector(T)*] Vector containing the elements to insert.
+ *
+ * @public @related Vector
  */
 #define vector_insert_all_sorted(T, vec, source)                                                    \
     vector_foreach(T, source, __item, {                                                             \
@@ -1234,6 +1398,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element whose insertion index should be found.
  * @return [vector_uint_t] Insertion index, or VECTOR_INDEX_NOT_FOUND if already present.
+ *
+ * @public @related Vector
  */
 #define vector_insertion_index_sorted_unique(T, vec, item) \
     __MACRO_CONCAT(vector_insertion_index_sorted_unique_, T)(vec, item)
@@ -1246,6 +1412,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to insert.
  * @return [vector_uint_t] Insertion index, or VECTOR_INDEX_NOT_FOUND if already present.
+ *
+ * @public @related Vector
  */
 #define vector_insert_sorted_unique(T, vec, item) \
     __MACRO_CONCAT(vector_insert_sorted_unique_, T)(vec, item)
@@ -1257,6 +1425,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param source [Vector(T)*] Vector containing the elements to insert.
+ *
+ * @public @related Vector
  */
 #define vector_insert_all_sorted_unique(T, vec, source)                                             \
     vector_foreach(T, source, __item, {                                                             \
@@ -1273,6 +1443,8 @@
  * @param dest [Vector(T)*] Destination vector.
  * @param source [Vector(T)*] Source vector.
  * @param __copy_func [(T) -> T] Copy function.
+ *
+ * @public @related Vector
  */
 #define vector_deep_copy(T, dest, source, __copy_func) do {                                         \
     if (source) {                                                                                   \
@@ -1293,6 +1465,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param __free_func [(T) -> void] Free function.
+ *
+ * @public @related Vector
  */
 #define vector_deep_free(T, vec, __free_func) do {                                                  \
     vector_foreach(T, vec, __##__free_func##_item, __free_func(__##__free_func##_item));            \
@@ -1307,6 +1481,8 @@
  * @param dest [Vector(T)*] Destination vector.
  * @param source [Vector(T)*] Source vector.
  * @param __copy_func [(T) -> T] Copy function.
+ *
+ * @public @related Vector
  */
 #define vector_deep_append(T, dest, source, __copy_func) do {                                       \
     vector_uint_t __##__copy_func##_count = vector_count(source);                                   \
@@ -1325,6 +1501,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param __free_func [(T) -> void] Free function.
+ *
+ * @public @related Vector
  */
 #define vector_deep_remove_all(T, vec, __free_func) do {                                            \
     vector_foreach(T, vec, __##__free_func##_item, __free_func(__##__free_func##_item));            \
@@ -1340,6 +1518,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param idx_var [vector_uint_t] Out variable (must be declared in outer scope).
  * @param bool_exp [expression] Boolean expression.
+ *
+ * @public @related Vector
  */
 #define vector_first_index_where(T, vec, idx_var, bool_exp) do {                                    \
     idx_var = VECTOR_INDEX_NOT_FOUND;                                                               \
@@ -1358,6 +1538,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param out_var [bool] Out variable (must be declared in outer scope).
  * @param bool_exp [expression] Boolean expression.
+ *
+ * @public @related Vector
  */
 #define vector_contains_where(T, vec, out_var, bool_exp) do {                                       \
     out_var = false;                                                                                \
@@ -1375,6 +1557,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param bool_exp [expression] Boolean expression.
+ *
+ * @public @related Vector
  */
 #define vector_remove_first_where(T, vec, bool_exp) \
     vector_remove_and_free_first_where(T, vec, bool_exp, (void))
@@ -1386,6 +1570,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param bool_exp [expression] Boolean expression.
  * @param __free_func [(T) -> void] Free function.
+ *
+ * @public @related Vector
  */
 #define vector_remove_and_free_first_where(T, vec, bool_exp, __free_func)                           \
     vector_iterate(T, vec, _vec_item, __i_remove, {                                                 \
@@ -1402,6 +1588,8 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param bool_exp [expression] Boolean expression.
+ *
+ * @public @related Vector
  */
 #define vector_remove_where(T, vec, bool_exp) \
     vector_remove_and_free_where(T, vec, bool_exp, (void))
@@ -1413,6 +1601,8 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param bool_exp [expression] Boolean expression.
  * @param __free_func [(T) -> void] Free function.
+ *
+ * @public @related Vector
  */
 #define vector_remove_and_free_where(T, vec, bool_exp, __free_func)                                 \
     vector_iterate_reverse(T, vec, _vec_item, __i_remove, {                                         \
@@ -1430,6 +1620,8 @@
  * @param __comp_func [(const void *, const void *) -> int] qsort-compatible sorting function.
  *
  * @see qsort
+ *
+ * @public @related Vector
  */
 #define vector_qsort(T, vec, __comp_func) \
     vector_qsort_range(T, vec, 0, (vec)->count, __comp_func)
@@ -1444,6 +1636,8 @@
  * @param __comp_func [(const void *, const void *) -> int] qsort-compatible sorting function.
  *
  * @see qsort
+ *
+ * @public @related Vector
  */
 #define vector_qsort_range(T, vec, start, len, __comp_func) \
     if (vec) qsort((vec)->storage + start, len, sizeof(T), __comp_func)
