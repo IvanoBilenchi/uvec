@@ -185,7 +185,7 @@
     SCOPE void vector_shrink_##T(Vector_##T *vector);                                               \
     SCOPE void vector_push_##T(Vector_##T *vector, T item);                                         \
     SCOPE T vector_pop_##T(Vector_##T *vector);                                                     \
-    SCOPE void vector_remove_at_##T(Vector_##T *vector, vector_uint_t idx);                         \
+    SCOPE T vector_remove_at_##T(Vector_##T *vector, vector_uint_t idx);                            \
     SCOPE void vector_insert_at_##T(Vector_##T *vector, vector_uint_t idx, T item);                 \
     SCOPE void vector_remove_all_##T(Vector_##T *vector);                                           \
     SCOPE void vector_reverse_##T(Vector_##T *vector);                                              \
@@ -294,8 +294,9 @@
         return vector->storage[--vector->count];                                                    \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_remove_at_##T(Vector_##T *vector, vector_uint_t idx) {                        \
+    SCOPE T vector_remove_at_##T(Vector_##T *vector, vector_uint_t idx) {                           \
         vector_uint_t count = vector->count;                                                        \
+        T item = vector->storage[idx];                                                              \
                                                                                                     \
         if (idx < count - 1) {                                                                      \
             size_t block_size = (count - idx - 1) * sizeof(T);                                      \
@@ -303,6 +304,7 @@
         }                                                                                           \
                                                                                                     \
         vector->count--;                                                                            \
+        return item;                                                                                \
     }                                                                                               \
                                                                                                     \
     SCOPE void vector_insert_at_##T(Vector_##T *vector, vector_uint_t idx, T item) {                \
@@ -928,6 +930,7 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param idx [vector_uint_t] Index of the element to remove.
+ * @return [T] Removed element.
  *
  * @public @related Vector
  */
