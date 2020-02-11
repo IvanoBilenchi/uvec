@@ -39,6 +39,10 @@ static int int_comparator(const void * a, const void * b) {
     return (va > vb) - (va < vb);
 }
 
+static int int_increment(int a) {
+    return a + 1;
+}
+
 /// @name Tests
 
 static bool test_base(void) {
@@ -103,7 +107,11 @@ static bool test_equality(void) {
     Vector(int) *v1 = vector_alloc(int);
     vector_append_items(int, v1, 3, 2, 4, 1);
 
-    Vector(int) *v2 = vector_copy(int, v1);
+    Vector(int) *v2 = vector_deep_copy(int, v1, int_increment);
+    vector_assert_elements(int, v2, 4, 3, 5, 2);
+    vector_free(int, v2);
+
+    v2 = vector_copy(int, v1);
     vector_assert(vector_equals(int, v1, v2));
 
     vector_pop(int, v2);
@@ -193,19 +201,6 @@ static bool test_higher_order(void) {
 
     vector_first_index_where(int, v, idx, _vec_item > 5);
     vector_assert(idx == VECTOR_INDEX_NOT_FOUND);
-
-    bool contains;
-    vector_contains_where(int, v, contains, _vec_item < 2);
-    vector_assert(contains);
-
-    vector_contains_where(int, v, contains, _vec_item < 0);
-    vector_assert(!contains);
-
-    vector_remove_first_where(int, v, _vec_item > 3);
-    vector_assert_elements(int, v, 3, 2, 1);
-
-    vector_remove_where(int, v, _vec_item > 1);
-    vector_assert_elements(int, v, 1);
 
     vector_free(int, v);
     return true;

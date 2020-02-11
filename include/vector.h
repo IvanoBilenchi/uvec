@@ -182,6 +182,7 @@
     SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, vector_uint_t capacity);             \
     SCOPE void vector_append_array_##T(Vector_##T *vector, T const *array, vector_uint_t n);        \
     SCOPE Vector_##T* vector_copy_##T(Vector_##T const *vector);                                    \
+    SCOPE Vector_##T* vector_deep_copy_##T(Vector_##T const *vector, T (*copy_func)(T));            \
     SCOPE void vector_shrink_##T(Vector_##T *vector);                                               \
     SCOPE void vector_push_##T(Vector_##T *vector, T item);                                         \
     SCOPE T vector_pop_##T(Vector_##T *vector);                                                     \
@@ -266,6 +267,16 @@
     SCOPE Vector_##T* vector_copy_##T(Vector_##T const *vector) {                                   \
         Vector_##T* copy = vector_alloc_##T();                                                      \
         vector_append_array_##T(copy, vector->storage, vector->count);                              \
+        return copy;                                                                                \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE Vector_##T* vector_deep_copy_##T(Vector_##T const *vector, T (*copy_func)(T)) {           \
+        Vector_##T *copy = vector_alloc_##T();                                                      \
+        vector_reserve_capacity_##T(copy, vector->count);                                           \
+        for (vector_uint_t i = 0; i < vector->count; ++i) {                                         \
+            copy->storage[i] = copy_func(vector->storage[i]);                                       \
+        }                                                                                           \
+        copy->count = vector->count;                                                                \
         return copy;                                                                                \
     }                                                                                               \
                                                                                                     \
@@ -741,18 +752,6 @@
 #define vector_alloc(T) __MACRO_CONCAT(vector_alloc_, T)()
 
 /**
- * Ensures the variable 'vec' expands to is not NULL,
- * otherwise a new vector is allocated and assigned to 'vec'.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector variable.
- * @return [Vector(T)*] Variable 'vec' expands to.
- *
- * @public @related Vector
- */
-#define vector_ensure(T, vec) (vec ? vec : (vec = vector_alloc(T)))
-
-/**
  * Deallocates the specified vector.
  *
  * @param T [symbol] Vector type.
@@ -772,6 +771,18 @@
  * @public @related Vector
  */
 #define vector_copy(T, vec) __MACRO_CONCAT(vector_copy_, T)(vec)
+
+/**
+ * Performs a deep copy of the specified vector.
+ *
+ * @param T [symbol] Vector type.
+ * @param vec [Vector(T)*] Vector to copy.
+ * @param __copy_func [(T) -> T] Copy function, invoked for each element.
+ * @return [Vector(T)*] Copied vector instance.
+ *
+ * @public @related Vector
+ */
+#define vector_deep_copy(T, vec, __copy_func) __MACRO_CONCAT(vector_deep_copy_, T)(vec, __copy_func)
 
 /**
  * Initializes a new vector on the stack.
@@ -821,7 +832,7 @@
  * @public @related Vector
  */
 #define vector_expand(T, vec, size) \
-    __MACRO_CONCAT(vector_reserve_capacity_, T)(vec, (vec->count + size))
+    __MACRO_CONCAT(vector_reserve_capacity_, T)(vec, (vec)->count + (size))
 
 /**
  * Shrinks the specified vector so that its allocated size
@@ -999,43 +1010,6 @@
 } while(0)
 
 /**
- * 'vector_ensure' followed by 'vector_push'.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param item [T] Element to push.
- *
- * @public @related Vector
- */
-#define vector_push_lazy(T, vec, item) \
-    do { vector_ensure(T, vec); vector_push(T, vec, item); } while(0)
-
-/**
- * 'vector_ensure' followed by 'vector_append'.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param vec_to_append [Vector(T)*] Vector to append.
- *
- * @public @related Vector
- */
-#define vector_append_lazy(T, vec, vec_to_append) \
-    do { vector_ensure(T, vec); vector_append(T, vec, vec_to_append); } while(0)
-
-/**
- * 'vector_ensure' followed by 'vector_append_array'.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param array [T*] Array to append.
- * @param n [vector_uint_t] Number of elements to append.
- *
- * @public @related Vector
- */
-#define vector_append_array_lazy(T, vec, array, n) \
-    do { vector_ensure(T, vec); vector_append_array(T, vec, array, n); } while(0)
-
-/**
  * Reverses the vector.
  *
  * @param T [symbol] Vector type.
@@ -1059,10 +1033,11 @@
  * @public @related Vector
  */
 #define vector_iterate(T, vec, item_name, idx_name, code) do {                                      \
-    if (vec) {                                                                                      \
-        vector_uint_t __n_##idx_name = (vec)->count;                                                \
+    Vector(T) const *__v_##idx_name = (vec);                                                        \
+    if (__v_##idx_name) {                                                                           \
+        vector_uint_t __n_##idx_name = (__v_##idx_name)->count;                                     \
         for (vector_uint_t idx_name = 0; idx_name != __n_##idx_name; ++idx_name) {                  \
-            T item_name = vector_get((vec), (idx_name));                                            \
+            T item_name = vector_get(__v_##idx_name, (idx_name));                                   \
             code;                                                                                   \
         }                                                                                           \
     }                                                                                               \
@@ -1081,9 +1056,10 @@
  * @public @related Vector
  */
 #define vector_iterate_reverse(T, vec, item_name, idx_name, code) do {                              \
-    if (vec) {                                                                                      \
-        for (vector_uint_t idx_name = (vec)->count; idx_name-- != 0;) {                             \
-            T item_name = vector_get((vec), (idx_name));                                            \
+    Vector(T) const *__v_##idx_name = (vec);                                                        \
+    if (__v_##idx_name) {                                                                           \
+        for (vector_uint_t idx_name = (__v_##idx_name)->count; idx_name-- != 0;) {                  \
+            T item_name = vector_get(__v_##idx_name, (idx_name));                                   \
             code;                                                                                   \
         }                                                                                           \
     }                                                                                               \
@@ -1247,30 +1223,6 @@
     vector_foreach(T, vec_to_remove, __item, {                                                      \
         __MACRO_CONCAT(vector_remove_, T)(vec, __item);                                             \
     })
-
-/**
- * 'vector_ensure' followed by 'vector_push_unique'.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param item [T] Element to push.
- *
- * @public @related Vector
- */
-#define vector_push_unique_lazy(T, vec, item) \
-    do { vector_ensure(T, vec); vector_push_unique(T, vec, item); } while(0)
-
-/**
- * 'vector_ensure' followed by 'vector_append_unique'.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param vec_to_append [Vector(T)*] Vector containing the elements to append.
- *
- * @public @related Vector
- */
-#define vector_append_unique_lazy(T, vec, vec_to_append) \
-    do { vector_ensure(T, vec); vector_append_unique(T, vec, vec_to_append); } while(0)
 
 /// @name Comparable
 
@@ -1436,82 +1388,6 @@
         __MACRO_CONCAT(vector_insert_sorted_unique_, T)(vec, __item);                               \
     })
 
-/// @name Deep manipulation
-
-/**
- * Performs a "deep copy": a new vector is allocated and assigned to 'dest',
- * then all the elements in 'source' are copied via '__copy_func' and pushed to 'dest'.
- *
- * @param T [symbol] Vector type.
- * @param dest [Vector(T)*] Destination vector.
- * @param source [Vector(T)*] Source vector.
- * @param __copy_func [(T) -> T] Copy function.
- *
- * @public @related Vector
- */
-#define vector_deep_copy(T, dest, source, __copy_func) do {                                         \
-    if (source) {                                                                                   \
-        dest = vector_alloc(T);                                                                     \
-        vector_reserve_capacity(T, dest, source->count);                                            \
-        vector_foreach(T, source, __##__copy_func##_item, {                                         \
-            vector_push(T, dest, __copy_func(__##__copy_func##_item));                              \
-        });                                                                                         \
-    } else {                                                                                        \
-        dest = NULL;                                                                                \
-    }                                                                                               \
-} while(0)
-
-/**
- * Performs a "deep free": '__free_func' is called on every
- * vector element before the whole vector is deallocated.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param __free_func [(T) -> void] Free function.
- *
- * @public @related Vector
- */
-#define vector_deep_free(T, vec, __free_func) do {                                                  \
-    vector_foreach(T, vec, __##__free_func##_item, __free_func(__##__free_func##_item));            \
-    vector_free(T, vec);                                                                            \
-} while(0)
-
-/**
- * Performs a "deep append": all the elements in 'source' are copied
- * via '__copy_func' and pushed to 'dest'. If 'dest' is NULL, it is allocated beforehand.
- *
- * @param T [symbol] Vector type.
- * @param dest [Vector(T)*] Destination vector.
- * @param source [Vector(T)*] Source vector.
- * @param __copy_func [(T) -> T] Copy function.
- *
- * @public @related Vector
- */
-#define vector_deep_append(T, dest, source, __copy_func) do {                                       \
-    vector_uint_t __##__copy_func##_count = vector_count(source);                                   \
-    if (__##__copy_func##_count) {                                                                  \
-        vector_ensure(T, dest);                                                                     \
-        vector_expand(T, dest, __##__copy_func##_count);                                            \
-        vector_foreach(T, source, __##__copy_func##_item, {                                         \
-            vector_push(T, dest, __copy_func(__##__copy_func##_item));                              \
-        });                                                                                         \
-    }                                                                                               \
-} while(0)
-
-/**
- * Performs a "deep remove all": all elements are removed and deallocated via '__free_func'.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param __free_func [(T) -> void] Free function.
- *
- * @public @related Vector
- */
-#define vector_deep_remove_all(T, vec, __free_func) do {                                            \
-    vector_foreach(T, vec, __##__free_func##_item, __free_func(__##__free_func##_item));            \
-    vector_remove_all(T, vec);                                                                      \
-} while(0)
-
 /// @name Higher order
 
 /**
@@ -1535,87 +1411,6 @@
 } while(0)
 
 /**
- * Checks whether the vector contains an element that matches the specified boolean expression.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param out_var [bool] Out variable (must be declared in outer scope).
- * @param bool_exp [expression] Boolean expression.
- *
- * @public @related Vector
- */
-#define vector_contains_where(T, vec, out_var, bool_exp) do {                                       \
-    out_var = false;                                                                                \
-    vector_foreach(T, vec, _vec_item, {                                                             \
-        if ((bool_exp)) {                                                                           \
-            out_var = true;                                                                         \
-            break;                                                                                  \
-        }                                                                                           \
-    });                                                                                             \
-} while(0)
-
-/**
- * Removes the first element that matches the specified boolean expression.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param bool_exp [expression] Boolean expression.
- *
- * @public @related Vector
- */
-#define vector_remove_first_where(T, vec, bool_exp) \
-    vector_remove_and_free_first_where(T, vec, bool_exp, (void))
-
-/**
- * Removes and deallocates the first element that matches the specified boolean expression.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param bool_exp [expression] Boolean expression.
- * @param __free_func [(T) -> void] Free function.
- *
- * @public @related Vector
- */
-#define vector_remove_and_free_first_where(T, vec, bool_exp, __free_func)                           \
-    vector_iterate(T, vec, _vec_item, __i_remove, {                                                 \
-        if ((bool_exp)) {                                                                           \
-            vector_remove_at(T, vec, __i_remove);                                                   \
-            __free_func(_vec_item);                                                                 \
-            break;                                                                                  \
-        }                                                                                           \
-    })
-
-/**
- * Removes all the elements that match the specified boolean expression.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param bool_exp [expression] Boolean expression.
- *
- * @public @related Vector
- */
-#define vector_remove_where(T, vec, bool_exp) \
-    vector_remove_and_free_where(T, vec, bool_exp, (void))
-
-/**
- * Removes and deallocates all the elements that match the specified boolean expression.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param bool_exp [expression] Boolean expression.
- * @param __free_func [(T) -> void] Free function.
- *
- * @public @related Vector
- */
-#define vector_remove_and_free_where(T, vec, bool_exp, __free_func)                                 \
-    vector_iterate_reverse(T, vec, _vec_item, __i_remove, {                                         \
-        if ((bool_exp)) {                                                                           \
-            vector_remove_at(T, vec, __i_remove);                                                   \
-            __free_func(_vec_item);                                                                 \
-        }                                                                                           \
-    })
-
-/**
  * Sorts the vector via qsort.
  *
  * @param T [symbol] Vector type.
@@ -1626,8 +1421,11 @@
  *
  * @public @related Vector
  */
-#define vector_qsort(T, vec, __comp_func) \
-    vector_qsort_range(T, vec, 0, (vec)->count, __comp_func)
+#define vector_qsort(T, vec, __comp_func) do {                                                      \
+    Vector(T) *__v_##__comp_func = (vec);                                                           \
+    if (__v_##__comp_func)                                                                          \
+        qsort((__v_##__comp_func)->storage, (__v_##__comp_func)->count, sizeof(T), __comp_func);    \
+} while(0)
 
 /**
  * Sorts the elements in the specified range via qsort.
@@ -1642,7 +1440,11 @@
  *
  * @public @related Vector
  */
-#define vector_qsort_range(T, vec, start, len, __comp_func) \
-    if (vec) qsort((vec)->storage + start, len, sizeof(T), __comp_func)
+#define vector_qsort_range(T, vec, start, len, __comp_func) do {                                    \
+    Vector(T) *__v_##__comp_func = (vec);                                                           \
+    if (__v_##__comp_func)                                                                          \
+        qsort((__v_##__comp_func)->storage + (start), len, sizeof(T), __comp_func);                 \
+} while(0)
+
 
 #endif // VECTOR_H
