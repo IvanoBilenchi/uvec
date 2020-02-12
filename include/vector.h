@@ -183,6 +183,7 @@
     SCOPE void vector_append_array_##T(Vector_##T *vector, T const *array, vector_uint_t n);        \
     SCOPE Vector_##T* vector_copy_##T(Vector_##T const *vector);                                    \
     SCOPE Vector_##T* vector_deep_copy_##T(Vector_##T const *vector, T (*copy_func)(T));            \
+    SCOPE void vector_copy_to_array_##T(Vector_##T const *vector, T array[]);                       \
     SCOPE void vector_shrink_##T(Vector_##T *vector);                                               \
     SCOPE void vector_push_##T(Vector_##T *vector, T item);                                         \
     SCOPE T vector_pop_##T(Vector_##T *vector);                                                     \
@@ -268,6 +269,10 @@
         Vector_##T* copy = vector_alloc_##T();                                                      \
         vector_append_array_##T(copy, vector->storage, vector->count);                              \
         return copy;                                                                                \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE void vector_copy_to_array_##T(Vector_##T const *vector, T array[]) {                      \
+        memcpy(array, vector->storage, vector->count * sizeof(T));                                  \
     }                                                                                               \
                                                                                                     \
     SCOPE Vector_##T* vector_deep_copy_##T(Vector_##T const *vector, T (*copy_func)(T)) {           \
@@ -783,6 +788,19 @@
  * @public @related Vector
  */
 #define vector_deep_copy(T, vec, __copy_func) __MACRO_CONCAT(vector_deep_copy_, T)(vec, __copy_func)
+
+/**
+ * Copies the elements of the specified vector into the given array.
+ *
+ * @param T [symbol] Vector type.
+ * @param vec [Vector(T)*] Vector to copy.
+ * @param array [T*] Array to copy the elements into.
+ *
+ * @note The array must be sufficiently large to hold all the elements.
+ *
+ * @public @related Vector
+ */
+#define vector_copy_to_array(T, vec, array) __MACRO_CONCAT(vector_copy_to_array_, T)(vec, array)
 
 /**
  * Initializes a new vector on the stack.

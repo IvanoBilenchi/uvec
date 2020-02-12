@@ -29,6 +29,10 @@
     vector_assert(memcmp((vec)->storage, result, sizeof(result)) == 0);                             \
 } while(0)
 
+#define vector_assert_elements_array(T, vec, arr) do {                                              \
+    vector_assert(memcmp((vec)->storage, arr, (vec)->count) == 0);                                  \
+} while(0)
+
 /// @name Type definitions
 
 VECTOR_INIT_IDENTIFIABLE(int)
@@ -113,6 +117,10 @@ static bool test_equality(void) {
 
     v2 = vector_copy(int, v1);
     vector_assert(vector_equals(int, v1, v2));
+
+    int arr[vector_count(v1)];
+    vector_copy_to_array(int, v1, arr);
+    vector_assert_elements_array(int, v1, arr);
 
     vector_pop(int, v2);
     vector_assert(!vector_equals(int, v1, v2));
