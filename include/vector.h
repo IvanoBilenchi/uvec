@@ -4,7 +4,7 @@
  * @see test.c for usage examples.
  * @author Ivano Bilenchi
  *
- * @copyright Copyright (c) 2018-2019 Ivano Bilenchi <https://ivanobilenchi.com>
+ * @copyright Copyright (c) 2018-2020 Ivano Bilenchi <https://ivanobilenchi.com>
  * @copyright SPDX-License-Identifier: MIT
  *
  * @file
