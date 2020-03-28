@@ -99,6 +99,21 @@
     #define __vector_analyzer_assert(c)
 #endif
 
+/// malloc override.
+#ifndef VECTOR_MALLOC
+    #define VECTOR_MALLOC malloc
+#endif
+
+/// realloc override.
+#ifndef VECTOR_REALLOC
+    #define VECTOR_REALLOC realloc
+#endif
+
+/// free override.
+#ifndef VECTOR_FREE
+    #define VECTOR_FREE free
+#endif
+
 /**
  * Changes the specified unsigned integer into the next power of two.
  *
@@ -133,7 +148,7 @@
 #define __vector_expand_if_required(T, vec) do {                                                    \
     if ((vec)->count == (vec)->allocated) {                                                         \
         (vec)->allocated = (vec)->allocated ? (vec)->allocated<<1u : 2;                             \
-        (vec)->storage = realloc((vec)->storage, sizeof(T) * (vec)->allocated);                     \
+        (vec)->storage = VECTOR_REALLOC((vec)->storage, sizeof(T) * (vec)->allocated);              \
     }                                                                                               \
 } while(0)
 
@@ -237,20 +252,22 @@
 #define __VECTOR_IMPL(T, SCOPE)                                                                     \
                                                                                                     \
     SCOPE Vector_##T* vector_alloc_##T(void) {                                                      \
-        return calloc(1, sizeof(Vector_##T));                                                       \
+        Vector_##T *vector = VECTOR_MALLOC(sizeof(*vector));                                        \
+        *vector = (Vector_##T) { .allocated = 0, .count = 0, .storage = NULL };                     \
+        return vector;                                                                              \
     }                                                                                               \
                                                                                                     \
     SCOPE void vector_free_##T(Vector_##T *vector) {                                                \
         if (!vector) return;                                                                        \
-        if (vector->allocated) free(vector->storage);                                               \
-        free(vector);                                                                               \
+        if (vector->allocated) VECTOR_FREE(vector->storage);                                        \
+        VECTOR_FREE(vector);                                                                        \
     }                                                                                               \
                                                                                                     \
     SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, vector_uint_t capacity) {            \
         if (vector->allocated < capacity) {                                                         \
             __vector_uint_next_power_2(capacity);                                                   \
             vector->allocated = capacity;                                                           \
-            vector->storage = realloc(vector->storage, sizeof(T) * capacity);                       \
+            vector->storage = VECTOR_REALLOC(vector->storage, sizeof(T) * capacity);                \
         }                                                                                           \
     }                                                                                               \
                                                                                                     \
@@ -293,10 +310,10 @@
                                                                                                     \
             if (new_allocated < vector->allocated) {                                                \
                 vector->allocated = new_allocated;                                                  \
-                vector->storage = realloc(vector->storage, sizeof(T) * new_allocated);              \
+                vector->storage = VECTOR_REALLOC(vector->storage, sizeof(T) * new_allocated);       \
             }                                                                                       \
         } else {                                                                                    \
-            free(vector->storage);                                                                  \
+            VECTOR_FREE(vector->storage);                                                           \
             vector->allocated = 0;                                                                  \
         }                                                                                           \
     }                                                                                               \
@@ -822,7 +839,7 @@
  */
 #define vector_deinit(vec) do {                                                                     \
     if ((vec).storage) {                                                                            \
-        free((vec).storage);                                                                        \
+        VECTOR_FREE((vec).storage);                                                                 \
         (vec).storage = NULL;                                                                       \
     }                                                                                               \
     (vec).count = (vec).allocated = 0;                                                              \
