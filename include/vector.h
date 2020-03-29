@@ -39,6 +39,24 @@
     typedef uint32_t vector_uint_t;
 #endif
 
+/**
+ * Return codes.
+ *
+ * @public @memberof Vector
+ */
+typedef enum vector_ret_t {
+
+    /// The operation succeeded.
+    VECTOR_OK = 0,
+
+    /**
+     * The operation failed.
+     * As of right now, it can only happen if memory cannot be allocated.
+     */
+    VECTOR_ERR,
+
+} vector_ret_t;
+
 // #############
 // # Constants #
 // #############
@@ -140,19 +158,6 @@
 #endif
 
 /**
- * Expands the vector if the allocated slots have all been filled up.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- */
-#define __vector_expand_if_required(T, vec) do {                                                    \
-    if ((vec)->count == (vec)->allocated) {                                                         \
-        (vec)->allocated = (vec)->allocated ? (vec)->allocated<<1u : 2;                             \
-        (vec)->storage = VECTOR_REALLOC((vec)->storage, sizeof(T) * (vec)->allocated);              \
-    }                                                                                               \
-} while(0)
-
-/**
  * Identity macro.
  *
  * @param a LHS of the identity.
@@ -194,16 +199,16 @@
     /** @cond */                                                                                    \
     SCOPE Vector_##T* vector_alloc_##T(void);                                                       \
     SCOPE void vector_free_##T(Vector_##T *vector);                                                 \
-    SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, vector_uint_t capacity);             \
-    SCOPE void vector_append_array_##T(Vector_##T *vector, T const *array, vector_uint_t n);        \
+    SCOPE vector_ret_t vector_reserve_capacity_##T(Vector_##T *vector, vector_uint_t capacity);     \
+    SCOPE vector_ret_t vector_append_array_##T(Vector_##T *vector, T const *array, vector_uint_t n);\
     SCOPE Vector_##T* vector_copy_##T(Vector_##T const *vector);                                    \
     SCOPE Vector_##T* vector_deep_copy_##T(Vector_##T const *vector, T (*copy_func)(T));            \
     SCOPE void vector_copy_to_array_##T(Vector_##T const *vector, T array[]);                       \
-    SCOPE void vector_shrink_##T(Vector_##T *vector);                                               \
-    SCOPE void vector_push_##T(Vector_##T *vector, T item);                                         \
+    SCOPE vector_ret_t vector_shrink_##T(Vector_##T *vector);                                       \
+    SCOPE vector_ret_t vector_push_##T(Vector_##T *vector, T item);                                 \
     SCOPE T vector_pop_##T(Vector_##T *vector);                                                     \
     SCOPE T vector_remove_at_##T(Vector_##T *vector, vector_uint_t idx);                            \
-    SCOPE void vector_insert_at_##T(Vector_##T *vector, vector_uint_t idx, T item);                 \
+    SCOPE vector_ret_t vector_insert_at_##T(Vector_##T *vector, vector_uint_t idx, T item);         \
     SCOPE void vector_remove_all_##T(Vector_##T *vector);                                           \
     SCOPE void vector_reverse_##T(Vector_##T *vector);                                              \
     /** @endcond */
@@ -218,7 +223,6 @@
     /** @cond */                                                                                    \
     SCOPE vector_uint_t vector_index_of_##T(Vector_##T const *vector, T item);                      \
     SCOPE vector_uint_t vector_index_of_reverse_##T(Vector_##T const *vector, T item);              \
-    SCOPE bool vector_push_unique_##T(Vector_##T *vector, T item);                                  \
     SCOPE bool vector_remove_##T(Vector_##T *vector, T item);                                       \
     SCOPE bool vector_equals_##T(Vector_##T const *vector, Vector_##T const *other);                \
     SCOPE bool vector_contains_all_##T(Vector_##T const *vector, Vector_##T const *other);          \
@@ -238,9 +242,6 @@
     SCOPE void vector_sort_range_##T(Vector_##T *vec, vector_uint_t start, vector_uint_t len);      \
     SCOPE vector_uint_t vector_insertion_index_sorted_##T(Vector_##T const *vec, T item);           \
     SCOPE vector_uint_t vector_index_of_sorted_##T(Vector_##T const *vec, T item);                  \
-    SCOPE vector_uint_t vector_insert_sorted_##T(Vector_##T *vec, T item);                          \
-    SCOPE vector_uint_t vector_insertion_index_sorted_unique_##T(Vector_##T const *vec, T item);    \
-    SCOPE vector_uint_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item);                   \
     /** @endcond */
 
 /**
@@ -251,9 +252,23 @@
  */
 #define __VECTOR_IMPL(T, SCOPE)                                                                     \
                                                                                                     \
+    static inline vector_ret_t vector_expand_if_required_##T(Vector_##T *vector) {                  \
+        if (vector->count < vector->allocated) return VECTOR_OK;                                    \
+                                                                                                    \
+        vector_uint_t new_allocated = vector->allocated ? (vector->allocated * 2) : 2;              \
+                                                                                                    \
+        T* new_storage = VECTOR_REALLOC(vector->storage, sizeof(T) * new_allocated);                \
+        if (!new_storage) return VECTOR_ERR;                                                        \
+                                                                                                    \
+        vector->allocated = new_allocated;                                                          \
+        vector->storage = new_storage;                                                              \
+                                                                                                    \
+        return VECTOR_OK;                                                                           \
+    }                                                                                               \
+                                                                                                    \
     SCOPE Vector_##T* vector_alloc_##T(void) {                                                      \
         Vector_##T *vector = VECTOR_MALLOC(sizeof(*vector));                                        \
-        *vector = (Vector_##T) { .allocated = 0, .count = 0, .storage = NULL };                     \
+        if (vector) *vector = (Vector_##T) { .allocated = 0, .count = 0, .storage = NULL };         \
         return vector;                                                                              \
     }                                                                                               \
                                                                                                     \
@@ -263,28 +278,40 @@
         VECTOR_FREE(vector);                                                                        \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_reserve_capacity_##T(Vector_##T *vector, vector_uint_t capacity) {            \
+    SCOPE vector_ret_t vector_reserve_capacity_##T(Vector_##T *vector, vector_uint_t capacity) {    \
         if (vector->allocated < capacity) {                                                         \
             __vector_uint_next_power_2(capacity);                                                   \
+            T* new_storage = VECTOR_REALLOC(vector->storage, sizeof(T) * capacity);                 \
+            if (!new_storage) return VECTOR_ERR;                                                    \
             vector->allocated = capacity;                                                           \
-            vector->storage = VECTOR_REALLOC(vector->storage, sizeof(T) * capacity);                \
+            vector->storage = new_storage;                                                          \
         }                                                                                           \
+        return VECTOR_OK;                                                                           \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_append_array_##T(Vector_##T *vector, T const *array, vector_uint_t n) {       \
-        if (!(n && array)) return;                                                                  \
+    SCOPE vector_ret_t vector_append_array_##T(Vector_##T *vector, T const *array,                  \
+                                               vector_uint_t n) {                                   \
+        if (!(n && array)) return VECTOR_OK;                                                        \
                                                                                                     \
         vector_uint_t old_count = vector->count;                                                    \
         vector_uint_t new_count = old_count + n;                                                    \
                                                                                                     \
+        if (vector_reserve_capacity_##T(vector, new_count)) return VECTOR_ERR;                      \
+                                                                                                    \
         vector->count = new_count;                                                                  \
-        vector_reserve_capacity_##T(vector, new_count);                                             \
         memcpy(&(vector->storage[old_count]), array, n * sizeof(T));                                \
+                                                                                                    \
+        return VECTOR_OK;                                                                           \
     }                                                                                               \
                                                                                                     \
     SCOPE Vector_##T* vector_copy_##T(Vector_##T const *vector) {                                   \
         Vector_##T* copy = vector_alloc_##T();                                                      \
-        vector_append_array_##T(copy, vector->storage, vector->count);                              \
+                                                                                                    \
+        if (copy && vector_append_array_##T(copy, vector->storage, vector->count)) {                \
+            vector_free_##T(copy);                                                                  \
+            copy = NULL;                                                                            \
+        }                                                                                           \
+                                                                                                    \
         return copy;                                                                                \
     }                                                                                               \
                                                                                                     \
@@ -294,33 +321,47 @@
                                                                                                     \
     SCOPE Vector_##T* vector_deep_copy_##T(Vector_##T const *vector, T (*copy_func)(T)) {           \
         Vector_##T *copy = vector_alloc_##T();                                                      \
-        vector_reserve_capacity_##T(copy, vector->count);                                           \
-        for (vector_uint_t i = 0; i < vector->count; ++i) {                                         \
-            copy->storage[i] = copy_func(vector->storage[i]);                                       \
+                                                                                                    \
+        if (copy) {                                                                                 \
+            if (vector_reserve_capacity_##T(copy, vector->count)) {                                 \
+                vector_free_##T(copy);                                                              \
+                copy = NULL;                                                                        \
+            } else {                                                                                \
+                for (vector_uint_t i = 0; i < vector->count; ++i) {                                 \
+                    copy->storage[i] = copy_func(vector->storage[i]);                               \
+                }                                                                                   \
+                copy->count = vector->count;                                                        \
+            }                                                                                       \
         }                                                                                           \
-        copy->count = vector->count;                                                                \
+                                                                                                    \
         return copy;                                                                                \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_shrink_##T(Vector_##T *vector) {                                              \
+    SCOPE vector_ret_t vector_shrink_##T(Vector_##T *vector) {                                      \
         vector_uint_t new_allocated = vector->count;                                                \
                                                                                                     \
         if (new_allocated) {                                                                        \
             __vector_uint_next_power_2(new_allocated);                                              \
                                                                                                     \
             if (new_allocated < vector->allocated) {                                                \
+                T* new_storage = VECTOR_REALLOC(vector->storage, sizeof(T) * new_allocated);        \
+                if (!new_storage) return VECTOR_ERR;                                                \
+                                                                                                    \
                 vector->allocated = new_allocated;                                                  \
-                vector->storage = VECTOR_REALLOC(vector->storage, sizeof(T) * new_allocated);       \
+                vector->storage = new_storage;                                                      \
             }                                                                                       \
         } else {                                                                                    \
             VECTOR_FREE(vector->storage);                                                           \
             vector->allocated = 0;                                                                  \
         }                                                                                           \
+                                                                                                    \
+        return VECTOR_OK;                                                                           \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_push_##T(Vector_##T *vector, T item) {                                        \
-        __vector_expand_if_required(T, vector);                                                     \
+    SCOPE vector_ret_t vector_push_##T(Vector_##T *vector, T item) {                                \
+        if (vector_expand_if_required_##T(vector)) return VECTOR_ERR;                               \
         vector->storage[vector->count++] = item;                                                    \
+        return VECTOR_OK;                                                                           \
     }                                                                                               \
                                                                                                     \
     SCOPE T vector_pop_##T(Vector_##T *vector) {                                                    \
@@ -340,8 +381,8 @@
         return item;                                                                                \
     }                                                                                               \
                                                                                                     \
-    SCOPE void vector_insert_at_##T(Vector_##T *vector, vector_uint_t idx, T item) {                \
-        __vector_expand_if_required(T, vector);                                                     \
+    SCOPE vector_ret_t vector_insert_at_##T(Vector_##T *vector, vector_uint_t idx, T item) {        \
+        if (vector_expand_if_required_##T(vector)) return VECTOR_ERR;                               \
                                                                                                     \
         if (idx < vector->count) {                                                                  \
             size_t block_size = (vector->count - idx) * sizeof(T);                                  \
@@ -350,6 +391,8 @@
                                                                                                     \
         vector->storage[idx] = item;                                                                \
         vector->count++;                                                                            \
+                                                                                                    \
+        return VECTOR_OK;                                                                           \
     }                                                                                               \
                                                                                                     \
     SCOPE void vector_remove_all_##T(Vector_##T *vector) {                                          \
@@ -389,12 +432,6 @@
             if (__equal_func(vector->storage[i], item)) return i;                                   \
         }                                                                                           \
         return VECTOR_INDEX_NOT_FOUND;                                                              \
-    }                                                                                               \
-                                                                                                    \
-    SCOPE bool vector_push_unique_##T(Vector_##T *vector, T item) {                                 \
-        bool insert = vector_index_of_##T(vector, item) == VECTOR_INDEX_NOT_FOUND;                  \
-        if (insert) vector_push_##T(vector, item);                                                  \
-        return insert;                                                                              \
     }                                                                                               \
                                                                                                     \
     SCOPE bool vector_remove_##T(Vector_##T *vector, T item) {                                      \
@@ -536,23 +573,6 @@
     SCOPE vector_uint_t vector_index_of_sorted_##T(Vector_##T const *vec, T item) {                 \
         vector_uint_t const i = vector_insertion_index_sorted_##T(vec, item);                       \
         return vec->storage && __equal_func(vec->storage[i], item) ? i : VECTOR_INDEX_NOT_FOUND;    \
-    }                                                                                               \
-                                                                                                    \
-    SCOPE vector_uint_t vector_insert_sorted_##T(Vector_##T *vec, T item) {                         \
-        vector_uint_t const i = vector_insertion_index_sorted_##T(vec, item);                       \
-        vector_insert_at_##T(vec, i, item);                                                         \
-        return i;                                                                                   \
-    }                                                                                               \
-                                                                                                    \
-    SCOPE vector_uint_t vector_insertion_index_sorted_unique_##T(Vector_##T const *vec, T item) {   \
-        vector_uint_t const i = vector_insertion_index_sorted_##T(vec, item);                       \
-        return vec->storage && __equal_func(vec->storage[i], item) ? VECTOR_INDEX_NOT_FOUND : i;    \
-    }                                                                                               \
-                                                                                                    \
-    SCOPE vector_uint_t vector_insert_sorted_unique_##T(Vector_##T *vec, T item) {                  \
-        vector_uint_t const i = vector_insertion_index_sorted_unique_##T(vec, item);                \
-        if (i != VECTOR_INDEX_NOT_FOUND) vector_insert_at_##T(vec, i, item);                        \
-        return i;                                                                                   \
     }
 
 // ##############
@@ -767,7 +787,7 @@
  * Allocates a new vector.
  *
  * @param T [symbol] Vector type.
- * @return [Vector(T)*] Vector instance.
+ * @return [Vector(T)*] Vector instance, or NULL on error.
  *
  * @public @related Vector
  */
@@ -788,7 +808,7 @@
  *
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector to copy.
- * @return [Vector(T)*] Copied vector instance.
+ * @return [Vector(T)*] Copied vector instance, or NULL on error.
  *
  * @public @related Vector
  */
@@ -800,7 +820,7 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector to copy.
  * @param __copy_func [(T) -> T] Copy function, invoked for each element.
- * @return [Vector(T)*] Copied vector instance.
+ * @return [Vector(T)*] Copied vector instance, or NULL on error.
  *
  * @public @related Vector
  */
@@ -851,6 +871,7 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param size [vector_uint_t] Number of elements the vector should be able to hold.
+ * @return [vector_ret_t] VECTOR_OK on success, otherwise VECTOR_ERR.
  *
  * @public @related Vector
  */
@@ -863,6 +884,7 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector to expand.
  * @param size [vector_uint_t] Number of additional elements the vector should be able to hold.
+ * @return [vector_ret_t] VECTOR_OK on success, otherwise VECTOR_ERR.
  *
  * @public @related Vector
  */
@@ -875,6 +897,7 @@
  *
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector to shrink.
+ * @return [vector_ret_t] VECTOR_OK on success, otherwise VECTOR_ERR.
  *
  * @public @related Vector
  */
@@ -954,6 +977,7 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param item [T] Element to push.
+ * @return [vector_ret_t] VECTOR_OK on success, otherwise VECTOR_ERR.
  *
  * @public @related Vector
  */
@@ -989,6 +1013,7 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param idx [vector_uint_t] Index at which the element should be inserted.
  * @param item [T] Element to insert.
+ * @return [vector_ret_t] VECTOR_OK on success, otherwise VECTOR_ERR.
  *
  * @public @related Vector
  */
@@ -1010,6 +1035,7 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param vec_to_append [Vector(T)*] Vector to append.
+ * @return [vector_ret_t] VECTOR_OK on success, otherwise VECTOR_ERR.
  *
  * @public @related Vector
  */
@@ -1023,6 +1049,7 @@
  * @param vec [Vector(T)*] Vector instance.
  * @param array [T*] Array to append.
  * @param n [vector_uint_t] Number of elements to append.
+ * @return [vector_ret_t] VECTOR_OK on success, otherwise VECTOR_ERR.
  *
  * @public @related Vector
  */
@@ -1035,14 +1062,13 @@
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
  * @param ... [T] Elements to append.
+ * @return [vector_ret_t] VECTOR_OK on success, otherwise VECTOR_ERR.
  *
  * @public @related Vector
  */
-#define vector_append_items(T, vec, ...) do {                                                       \
-    T const __vec_##T##_init[] = { __VA_ARGS__ };                                                   \
-    size_t __vec_##T##_init_size = sizeof(__vec_##T##_init) / sizeof(*__vec_##T##_init);            \
-    vector_append_array(T, vec, __vec_##T##_init, __vec_##T##_init_size);                           \
-} while(0)
+#define vector_append_items(T, vec, ...)                                                            \
+    __MACRO_CONCAT(vector_append_array_, T)                                                         \
+        (vec, (T[]){ __VA_ARGS__ }, (sizeof((T[]){ __VA_ARGS__ }) / sizeof(T)))
 
 /**
  * Reverses the vector.
@@ -1220,32 +1246,6 @@
 #define vector_equals(T, vec_a, vec_b) __MACRO_CONCAT(vector_equals_, T)(vec_a, vec_b)
 
 /**
- * Pushes an element if it is not already in the vector.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param item [T] Element to push.
- * @return [bool] True if the element was pushed, false otherwise.
- *
- * @public @related Vector
- */
-#define vector_push_unique(T, vec, item) __MACRO_CONCAT(vector_push_unique_, T)(vec, item)
-
-/**
- * Pushes all the elements present in 'vec_to_append' that are not already present in 'vec'.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param vec_to_append [Vector(T)*] Vector containing the elements to append.
- *
- * @public @related Vector
- */
-#define vector_append_unique(T, vec, vec_to_append)                                                 \
-    vector_foreach(T, vec_to_append, __item, {                                                      \
-        __MACRO_CONCAT(vector_push_unique_, T)(vec, __item);                                        \
-    })
-
-/**
  * Removes all the elements present in 'vec_to_remove' from 'vec'.
  *
  * @param T [symbol] Vector type.
@@ -1352,77 +1352,6 @@
 #define vector_contains_sorted(T, vec, item) \
     (__MACRO_CONCAT(vector_index_of_sorted_, T)(vec, item) != VECTOR_INDEX_NOT_FOUND)
 
-/**
- * Inserts an element in a sorted vector.
- * Average performance: O(log n)
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param item [T] Element to insert.
- * @return [vector_uint_t] Index of the inserted element.
- *
- * @public @related Vector
- */
-#define vector_insert_sorted(T, vec, item) \
-    __MACRO_CONCAT(vector_insert_sorted_, T)(vec, item)
-
-/**
- * Inserts all the elements present in a vector into another sorted vector.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param source [Vector(T)*] Vector containing the elements to insert.
- *
- * @public @related Vector
- */
-#define vector_insert_all_sorted(T, vec, source)                                                    \
-    vector_foreach(T, source, __item, {                                                             \
-        __MACRO_CONCAT(vector_insert_sorted_, T)(vec, __item);                                      \
-    })
-
-/**
- * Finds the insertion index for the specified item in a sorted vector if it is not already present.
- * Average performance: O(log n)
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param item [T] Element whose insertion index should be found.
- * @return [vector_uint_t] Insertion index, or VECTOR_INDEX_NOT_FOUND if already present.
- *
- * @public @related Vector
- */
-#define vector_insertion_index_sorted_unique(T, vec, item) \
-    __MACRO_CONCAT(vector_insertion_index_sorted_unique_, T)(vec, item)
-
-/**
- * Inserts an element in a sorted vector if it is not already present.
- * Average performance: O(log n)
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param item [T] Element to insert.
- * @return [vector_uint_t] Insertion index, or VECTOR_INDEX_NOT_FOUND if already present.
- *
- * @public @related Vector
- */
-#define vector_insert_sorted_unique(T, vec, item) \
-    __MACRO_CONCAT(vector_insert_sorted_unique_, T)(vec, item)
-
-/**
- * Inserts all the elements present in a vector into another sorted vector
- * if they are not already present.
- *
- * @param T [symbol] Vector type.
- * @param vec [Vector(T)*] Vector instance.
- * @param source [Vector(T)*] Vector containing the elements to insert.
- *
- * @public @related Vector
- */
-#define vector_insert_all_sorted_unique(T, vec, source)                                             \
-    vector_foreach(T, source, __item, {                                                             \
-        __MACRO_CONCAT(vector_insert_sorted_unique_, T)(vec, __item);                               \
-    })
-
 /// @name Higher order
 
 /**
@@ -1430,7 +1359,7 @@
  *
  * @param T [symbol] Vector type.
  * @param vec [Vector(T)*] Vector instance.
- * @param idx_var [vector_uint_t] Out variable (must be declared in outer scope).
+ * @param[out] idx_var [vector_uint_t] Out variable (must be declared in outer scope).
  * @param bool_exp [expression] Boolean expression.
  *
  * @public @related Vector
