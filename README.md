@@ -1,4 +1,4 @@
-## Vector(T) - a type-safe, generic C vector.
+## uVec - a type-safe, generic C vector.
 
 ### Author
 
@@ -12,30 +12,30 @@ Inspired by [klib](https://github.com/attractivechaos/klib).
 
 ### Features
 
-- Vector primitives (`vector_get`, `vector_set`, `vector_push`, `vector_pop`, `vector_append`, ...)
-- Iteration macros (`vector_iterate`, `vector_foreach`, ...)
-- Support for element equality and related features (`vector_contains`, `vector_index_of`, ...)
-- Support for element comparison and related features (`vector_index_of_max`, `vector_index_of_min`, `vector_sort`, ...)
-- Higher order macros (`vector_first_index_where`, `vector_remove_where`, ...)
+- Vector primitives (`uvec_get`, `uvec_set`, `uvec_push`, `uvec_pop`, `uvec_append`, ...)
+- Iteration macros (`uvec_iterate`, `uvec_foreach`, ...)
+- Support for element equality and related features (`uvec_contains`, `uvec_index_of`, ...)
+- Support for element comparison and related features (`uvec_index_of_max`, `uvec_index_of_min`, `uvec_sort`, ...)
+- Higher order macros (`uvec_first_index_where`, `uvec_remove_where`, ...)
 
 ### Usage
 
-If you are using [CMake](https://cmake.org) as your build system, you can add `Vector(T)` as
-a subproject, then link against the `vector` target. Otherwise, in general you just need
-the [vector.h](include/vector.h) header.
+If you are using [CMake](https://cmake.org) as your build system, you can add `uVec` as
+a subproject, then link against the `uvec` target. Otherwise, in general you just need
+the [uvec.h](include/uvec.h) header.
 
 ### Documentation
 
 Documentation for the project is provided in form of docstrings in the *Public API* section
-of [vector.h](include/vector.h). You can also generate HTML docs via CMake, though you will
+of [uvec.h](include/uvec.h). You can also generate HTML docs via CMake, though you will
 also need [Doxygen](http://www.doxygen.nl). For usage examples, see [test.c](test/test.c).
 
 ### CMake targets
 
-- `vector`: interface library target, which you can link against.
-- `vector-docs`: generates documentation via Doxygen.
-- `vector-test`: generates the test suite.
+- `uvec`: interface library target, which you can link against.
+- `uvec-docs`: generates documentation via Doxygen.
+- `uvec-test`: generates the test suite.
 
 ### License
 
-`Vector(T)` is available under the MIT license. See the [LICENSE](./LICENSE) file for more info.
+`uVec` is available under the MIT license. See the [LICENSE](./LICENSE) file for more info.

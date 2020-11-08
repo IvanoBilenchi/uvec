@@ -1,11 +1,10 @@
 # Files and directories
 
-set(README_FILE "${VEC_PROJECT_DIR}/README.md")
-set(DOCS_OUTPUT_DIRECTORY "${VEC_OUTPUT_DIR}/docs")
+set(README_FILE "../README.md")
+get_target_property(HEADERS uvec INTERFACE_SOURCES)
 
 # Doxygen configuration
 
-set(DOXYGEN_PROJECT_NAME "${VEC_NAME}")
 set(DOXYGEN_FULL_PATH_NAMES NO)
 set(DOXYGEN_JAVADOC_AUTOBRIEF YES)
 set(DOXYGEN_OPTIMIZE_OUTPUT_FOR_C YES)
@@ -18,15 +17,15 @@ set(DOXYGEN_WARN_NO_PARAMDOC YES)
 set(DOXYGEN_EXCLUDE_SYMBOLS "__*")
 set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "${README_FILE}")
 set(DOXYGEN_ALPHABETICAL_INDEX NO)
-set(DOXYGEN_IGNORE_PREFIX "VECTOR_" "vector_")
+set(DOXYGEN_IGNORE_PREFIX "UVEC_" "uvec_")
 set(DOXYGEN_MACRO_EXPANSION YES)
-set(DOXYGEN_OUTPUT_DIRECTORY "${DOCS_OUTPUT_DIRECTORY}")
+set(DOXYGEN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 
 # Documentation target
 
 find_package(Doxygen)
 
 if(DOXYGEN_FOUND)
-    doxygen_add_docs(vector-docs "${README_FILE}" "${VEC_HEADER}"
+    doxygen_add_docs(uvec-docs "${README_FILE}" ${HEADERS}
                      COMMENT "Generate documentation")
 endif()
