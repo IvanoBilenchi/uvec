@@ -54,7 +54,7 @@ static bool test_base(void) {
     uvec_assert(v);
     uvec_assert(uvec_is_empty(v));
 
-    uvec_ret_t ret = uvec_append_items(int, v, 3, 2, 4, 1);
+    uvec_ret ret = uvec_append_items(int, v, 3, 2, 4, 1);
     uvec_assert(ret == UVEC_OK);
     uvec_assert(!uvec_is_empty(v));
     uvec_assert_elements(int, v, 3, 2, 4, 1);
@@ -89,10 +89,10 @@ static bool test_base(void) {
 
 static bool test_capacity(void) {
     UVec(int) *v = uvec_alloc(int);
-    uvec_uint_t const capacity = 5;
-    uvec_uint_t const expand = 3;
+    uvec_uint const capacity = 5;
+    uvec_uint const expand = 3;
 
-    uvec_ret_t ret = uvec_reserve_capacity(int, v, capacity);
+    uvec_ret ret = uvec_reserve_capacity(int, v, capacity);
     uvec_assert(ret == UVEC_OK);
     uvec_assert(v->allocated >= capacity);
 
@@ -117,7 +117,7 @@ static bool test_capacity(void) {
 
 static bool test_equality(void) {
     UVec(int) *v1 = uvec_alloc(int);
-    uvec_ret_t ret = uvec_append_items(int, v1, 3, 2, 4, 1);
+    uvec_ret ret = uvec_append_items(int, v1, 3, 2, 4, 1);
     uvec_assert(ret == UVEC_OK);
 
     UVec(int) *v2 = uvec_deep_copy(int, v1, int_increment);
@@ -147,7 +147,7 @@ static bool test_equality(void) {
 
 static bool test_contains(void) {
     UVec(int) *v1 = uvec_alloc(int);
-    uvec_ret_t ret = uvec_append_items(int, v1, 3, 2, 5, 4, 5, 1);
+    uvec_ret ret = uvec_append_items(int, v1, 3, 2, 5, 4, 5, 1);
     uvec_assert(ret == UVEC_OK);
 
     uvec_assert(uvec_index_of(int, v1, 5) == 2);
@@ -181,7 +181,7 @@ static bool test_contains(void) {
 
 static bool test_qsort_reverse(void) {
     UVec(int) *v = uvec_alloc(int);
-    uvec_ret_t ret = uvec_append_items(int, v, 3, 2, 4, 1);
+    uvec_ret ret = uvec_append_items(int, v, 3, 2, 4, 1);
     uvec_assert(ret == UVEC_OK);
 
     uvec_qsort(int, v, int_comparator);
@@ -196,10 +196,10 @@ static bool test_qsort_reverse(void) {
 
 static bool test_higher_order(void) {
     UVec(int) *v = uvec_alloc(int);
-    uvec_ret_t ret = uvec_append_items(int, v, 3, 2, 4, 1);
+    uvec_ret ret = uvec_append_items(int, v, 3, 2, 4, 1);
     uvec_assert(ret == UVEC_OK);
 
-    uvec_uint_t idx;
+    uvec_uint idx;
     uvec_first_index_where(int, v, idx, _vec_item > 3);
     uvec_assert(idx == 2);
 
@@ -213,11 +213,11 @@ static bool test_higher_order(void) {
 static bool test_comparable(void) {
     UVec(int) *v = uvec_alloc(int);
 
-    uvec_uint_t idx = uvec_insertion_index_sorted(int, v, 0);
+    uvec_uint idx = uvec_insertion_index_sorted(int, v, 0);
     uvec_assert(idx == 0);
 
     UVec(int) *values = uvec_alloc(int);
-    uvec_ret_t ret = uvec_append_items(int, values, 3, 2, 2, 2, 4, 1, 5, 6, 5);
+    uvec_ret ret = uvec_append_items(int, values, 3, 2, 2, 2, 4, 1, 5, 6, 5);
     uvec_assert(ret == UVEC_OK);
 
     ret = uvec_append(int, v, values);
