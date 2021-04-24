@@ -129,9 +129,10 @@ static bool test_equality(void) {
     uvec_assert(v2);
     uvec_assert(uvec_equals(int, v1, v2));
 
-    int arr[uvec_count(v1)];
+    int *arr = UVEC_MALLOC(uvec_count(v1) * sizeof(*arr));
     uvec_copy_to_array(int, v1, arr);
     uvec_assert_elements_array(int, v1, arr);
+    UVEC_FREE(arr);
 
     uvec_pop(int, v2);
     uvec_assert(!uvec_equals(int, v1, v2));
