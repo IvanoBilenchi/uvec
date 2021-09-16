@@ -315,7 +315,7 @@ typedef enum uvec_ret {
     }                                                                                               \
                                                                                                     \
     SCOPE void uvec_copy_to_array_##T(UVec_##T const *vec, T array[]) {                             \
-        memcpy(array, vec->storage, vec->count * sizeof(T));                                        \
+        if (vec->count) memcpy(array, vec->storage, vec->count * sizeof(T));                        \
     }                                                                                               \
                                                                                                     \
     SCOPE UVec_##T* uvec_deep_copy_##T(UVec_##T const *vec, T (*copy_func)(T)) {                    \
@@ -844,7 +844,7 @@ typedef enum uvec_ret {
 #define uvec_init(T) ((P_UVEC_CONCAT(UVec_, T)){ .count = 0, .allocated = 0, .storage = NULL })
 
 /**
- * De-initializes a vector previously initialized via UVEC_INIT.
+ * De-initializes a vector previously initialized via uvec_init.
  *
  * @param vec [UVec(T)] Vector to de-initialize.
  *
