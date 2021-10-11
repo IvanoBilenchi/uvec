@@ -158,6 +158,16 @@ static bool test_contains(void) {
     uvec_assert(uvec_contains(int, v1, 2));
     uvec_assert(!uvec_contains(int, v1, 7));
 
+    ret = uvec_push_unique(int, v1, 7);
+    uvec_assert(ret == UVEC_OK);
+    uvec_assert_elements(int, v1, 3, 2, 5, 4, 5, 1, 7);
+    uvec_assert(uvec_contains(int, v1, 7));
+
+    ret = uvec_push_unique(int, v1, 7);
+    uvec_assert(ret == UVEC_NO);
+    uvec_assert_elements(int, v1, 3, 2, 5, 4, 5, 1, 7);
+    uvec_pop(int, v1);
+
     UVec(int) *v2 = uvec_alloc(int);
     ret = uvec_append_items(int, v2, 1, 6, 4, 5);
     uvec_assert(ret == UVEC_OK);
@@ -251,6 +261,24 @@ static bool test_comparable(void) {
 
     idx = uvec_insertion_index_sorted(int, v, 2);
     uvec_assert(idx == 1);
+
+    uvec_insert_sorted(int, v, 0, &idx);
+    uvec_assert_elements(int, v, 0, 1, 2, 3, 5, 6);
+    uvec_assert(idx == 0);
+
+    uvec_insert_sorted(int, v, 3, &idx);
+    uvec_assert_elements(int, v, 0, 1, 2, 3, 3, 5, 6);
+    uvec_assert(idx == 3);
+
+    ret = uvec_insert_sorted_unique(int, v, 7, &idx);
+    uvec_assert_elements(int, v, 0, 1, 2, 3, 3, 5, 6, 7);
+    uvec_assert(ret == UVEC_OK);
+    uvec_assert(idx == 7);
+
+    ret = uvec_insert_sorted_unique(int, v, 3, &idx);
+    uvec_assert_elements(int, v, 0, 1, 2, 3, 3, 5, 6, 7);
+    uvec_assert(ret == UVEC_NO);
+    uvec_assert(idx == 3);
 
     uvec_free(int, v);
     uvec_free(int, values);

@@ -49,8 +49,11 @@ typedef enum uvec_ret {
     /// The operation succeeded.
     UVEC_OK = 0,
 
+    /// The operation could not be completed.
+    UVEC_NO,
+
     /**
-     * The operation failed.
+     * The operation failed due to an error.
      * As of right now, it can only happen if memory cannot be allocated.
      */
     UVEC_ERR,
@@ -227,6 +230,7 @@ typedef enum uvec_ret {
     SCOPE bool uvec_equals_##T(UVec_##T const *vec, UVec_##T const *other);                         \
     SCOPE bool uvec_contains_all_##T(UVec_##T const *vec, UVec_##T const *other);                   \
     SCOPE bool uvec_contains_any_##T(UVec_##T const *vec, UVec_##T const *other);                   \
+    SCOPE uvec_ret uvec_push_unique_##T(UVec_##T *vec, T item);                                     \
     /** @endcond */
 
 /**
@@ -242,6 +246,8 @@ typedef enum uvec_ret {
     SCOPE void uvec_sort_range_##T(UVec_##T *vec, uvec_uint start, uvec_uint len);                  \
     SCOPE uvec_uint uvec_insertion_index_sorted_##T(UVec_##T const *vec, T item);                   \
     SCOPE uvec_uint uvec_index_of_sorted_##T(UVec_##T const *vec, T item);                          \
+    SCOPE uvec_ret uvec_insert_sorted_##T(UVec_##T *vec, T item, uvec_uint *idx);                   \
+    SCOPE uvec_ret uvec_insert_sorted_unique_##T(UVec_##T *vec, T item, uvec_uint *idx);            \
     /** @endcond */
 
 /**
@@ -478,6 +484,11 @@ typedef enum uvec_ret {
         }                                                                                           \
                                                                                                     \
         return false;                                                                               \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE uvec_ret uvec_push_unique_##T(UVec_##T *vec, T item) {                                    \
+        if (uvec_index_of_##T(vec, item) != UVEC_INDEX_NOT_FOUND) return UVEC_NO;                   \
+        return uvec_push_##T(vec, item);                                                            \
     }
 
 /**
@@ -567,6 +578,22 @@ typedef enum uvec_ret {
     SCOPE uvec_uint uvec_index_of_sorted_##T(UVec_##T const *vec, T item) {                         \
         uvec_uint const i = uvec_insertion_index_sorted_##T(vec, item);                             \
         return vec->storage && equal_func(vec->storage[i], item) ? i : UVEC_INDEX_NOT_FOUND;        \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE uvec_ret uvec_insert_sorted_##T(UVec_##T *vec, T item, uvec_uint *idx) {                  \
+        uvec_uint i = uvec_insertion_index_sorted_##T(vec, item);                                   \
+        if (idx) *idx = i;                                                                          \
+        return uvec_insert_at_##T(vec, i, item);                                                    \
+    }                                                                                               \
+                                                                                                    \
+    SCOPE uvec_ret uvec_insert_sorted_unique_##T(UVec_##T *vec, T item, uvec_uint *idx) {           \
+        uvec_uint i = uvec_insertion_index_sorted_##T(vec, item);                                   \
+        if (idx) *idx = i;                                                                          \
+        if (i == vec->count || !equal_func(vec->storage[i], item)) {                                \
+            return uvec_insert_at_##T(vec, i, item);                                                \
+        } else {                                                                                    \
+            return UVEC_NO;                                                                         \
+        }                                                                                           \
     }
 
 // ##############
@@ -1247,6 +1274,19 @@ typedef enum uvec_ret {
         P_UVEC_CONCAT(uvec_remove_, T)(vec, p_item);                                                \
     })
 
+/**
+ * Pushes the specified element to the top of the vector if it does not already contain it.
+ *
+ * @param T [symbol] Vector type.
+ * @param vec [UVec(T)*] Vector instance.
+ * @param item [T] Element to push.
+ * @return [uvec_ret] UVEC_OK if the element was pushed,
+ *                    UVEC_NO if the element was already present, otherwise UVEC_ERR.
+ *
+ * @public @related UVec
+ */
+#define uvec_push_unique(T, vec, item) P_UVEC_CONCAT(uvec_push_unique_, T)(vec, item)
+
 /// @name Comparable
 
 /**
@@ -1337,6 +1377,34 @@ typedef enum uvec_ret {
  */
 #define uvec_contains_sorted(T, vec, item) \
     (P_UVEC_CONCAT(uvec_index_of_sorted_, T)(vec, item) != UVEC_INDEX_NOT_FOUND)
+
+/**
+ * Inserts the specified element in a sorted vector.
+ *
+ * @param T [symbol] Vector type.
+ * @param vec [UVec(T)*] Vector instance.
+ * @param item [T] Element to insert.
+ * @param[out] idx [uvec_uint] Index of the inserted element.
+ * @return [uvec_ret] UVEC_OK on success, otherwise UVEC_ERR.
+ *
+ * @public @related UVec
+ */
+#define uvec_insert_sorted(T, vec, item, idx) P_UVEC_CONCAT(uvec_insert_sorted_, T)(vec, item, idx)
+
+/**
+ * Inserts the specified element in a sorted vector only if it does not already contain it.
+ *
+ * @param T [symbol] Vector type.
+ * @param vec [UVec(T)*] Vector instance.
+ * @param item [T] Element to insert.
+ * @param[out] idx [uvec_uint] Index of the inserted (or that of the already present) element.
+ * @return [uvec_ret] UVEC_OK if the element was inserted,
+ *                    UVEC_NO if the element was already present, otherwise UVEC_ERR.
+ *
+ * @public @related UVec
+ */
+#define uvec_insert_sorted_unique(T, vec, item, idx) \
+    P_UVEC_CONCAT(uvec_insert_sorted_unique_, T)(vec, item, idx)
 
 /// @name Higher order
 
