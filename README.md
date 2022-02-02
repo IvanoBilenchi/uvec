@@ -1,5 +1,9 @@
 ## uVec - a type-safe, generic C vector.
 
+### ⚠️ Important note ⚠️
+
+uVec is now part of the [uLib](https://github.com/IvanoBilenchi/ulib) library. All further development has moved there.
+
 ### Author
 
 [Ivano Bilenchi](https://ivanobilenchi.com)
